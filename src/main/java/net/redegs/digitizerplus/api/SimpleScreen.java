@@ -43,7 +43,7 @@ public class SimpleScreen extends Screen {
     public boolean rendering = false;
     protected final List<Graphic> graphics = new ArrayList<>();
     protected final List<Graphic> graphicsToAdd = new ArrayList<>();
-
+    protected final List<Graphic> graphicsToRemove = new ArrayList<>();
 
     public SimpleScreen(ResourceLocation texture, int i1, int i, Integer imageWidth, Integer imageHeight, String title) {
         super(Component.literal(title));
@@ -106,6 +106,11 @@ public class SimpleScreen extends Screen {
     public SimpleScreen addGraphic(Graphic graphic) {
         if (rendering) { graphicsToAdd.add(graphic); }
         else { graphics.add(graphic); }
+        return this;
+    }
+    public SimpleScreen removeGraphic(Graphic graphic) {
+        if (rendering) { graphicsToRemove.add(graphic); }
+        else { graphics.remove(graphic); }
         return this;
     }
 
@@ -198,9 +203,14 @@ public class SimpleScreen extends Screen {
             graphic.Draw(guiGraphics, mouseX, mouseY, delta, guiPositionX, guiPositionY);
         }
         rendering = false;
+
         if (!graphicsToAdd.isEmpty()) {
             graphics.addAll(graphicsToAdd);
             graphicsToAdd.clear();
+        }
+        if (!graphicsToRemove.isEmpty()) {
+            graphics.removeAll(graphicsToRemove);
+            graphicsToRemove.clear();
         }
     }
 

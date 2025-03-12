@@ -50,10 +50,22 @@ public class HumanoidRobotScreen extends SimpleScreen {
     }
 
 
+    private Runnable removeInstruction(Instruction instruction) {
+        this.instructionStack.remove(instruction);
+        for (Instruction instructionI : instructionStack) {
+            InstructionGraphic bg = instructionI.graphic;
+            bg.setPosition(93, 11 + ((instructionStack.indexOf(instructionI)-1) * 16)); // Stack buttons vertically
+        }
+        addInstructionButton.setPosition(93, 11 + ((instructionStack.size()) * 16)); // Set 'add instruction' button position
+        graphicsToRemove.add(instruction.graphic);
+        robot.prnt("removed");
+        return null;
+    }
+
     private Runnable newInstruction() {
         // First, update the position of each existing button based on its index
         for (Instruction instruction : instructionStack) {
-            InstructionGraphic bg = instruction.linkedBackground;
+            InstructionGraphic bg = instruction.graphic;
             bg.setPosition(93, 11 + (instructionStack.indexOf(instruction) * 16)); // Stack buttons vertically
         }
 
@@ -63,7 +75,8 @@ public class HumanoidRobotScreen extends SimpleScreen {
 
 
         // Add the new instruction to the stack and queue it for rendering
-        Instruction instruction = new Instruction(instructionStack.size(), instructionGraphic);
+        Instruction instruction = new Instruction(instructionStack, instructionGraphic);
+        instruction.LinkButtons(() -> {removeInstruction(instruction);});
         instructionStack.add(instruction);
 
         // Add the new button to the list of graphics to add
@@ -71,6 +84,8 @@ public class HumanoidRobotScreen extends SimpleScreen {
         robot.prnt(String.valueOf(instructionStack.size()));
         return null;
     }
+
+
 
     private Runnable prnt(String str) {
         robot.prnt(str);
