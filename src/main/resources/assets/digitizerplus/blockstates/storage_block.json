@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "digitizerplus:block/storage_block" },
+    "facing=east":  { "model": "digitizerplus:block/storage_block", "y": 90 },
+    "facing=south": { "model": "digitizerplus:block/storage_block", "y": 180 },
+    "facing=west":  { "model": "digitizerplus:block/storage_block", "y": 270 }
+  }
+}
