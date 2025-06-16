@@ -2,6 +2,7 @@ package net.redegs.digitizerplus.api.graphics;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
@@ -39,7 +40,7 @@ public class ButtonGraphic extends Graphic{
     }
 
     @Override
-    public void Draw(GuiGraphics guiGraphics, int mouseX, int mouseY, float deltaT, int guiPositionX, int guiPositionY) {
+    public void Draw(GuiGraphics guiGraphics, int mouseX, int mouseY, float deltaT, int guiPositionX, int guiPositionY, Screen screen) {
         dx = x+guiPositionX; dy = y+guiPositionY;
 
         boolean isHovered = isHovered(mouseX, mouseY);
@@ -80,7 +81,7 @@ public class ButtonGraphic extends Graphic{
         } down = false; this.button = -1;
     }
 
-    private boolean isHovered(int mouseX, int mouseY) {
+    public boolean isHovered(int mouseX, int mouseY) {
         boolean isHovered = mouseX >= dx && mouseX < dx+ sx &&
                 mouseY >= dy && mouseY < dy + sy;
         return isHovered;

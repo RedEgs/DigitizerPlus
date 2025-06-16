@@ -45,6 +45,8 @@ public class SimpleScreen extends Screen {
     protected final List<Graphic> graphicsToAdd = new ArrayList<>();
     protected final List<Graphic> graphicsToRemove = new ArrayList<>();
 
+    protected final List<Graphic> hoveredGraphics = new ArrayList<>();
+
     public SimpleScreen(ResourceLocation texture, int i1, int i, Integer imageWidth, Integer imageHeight, String title) {
         super(Component.literal(title));
         if (texture != null) {
@@ -200,9 +202,20 @@ public class SimpleScreen extends Screen {
         rendering = true;
         List<Graphic> snapshot = new ArrayList<>(graphics);
         for (Graphic graphic : snapshot) {
-            graphic.Draw(guiGraphics, mouseX, mouseY, delta, guiPositionX, guiPositionY);
+            graphic.Draw(guiGraphics, mouseX, mouseY, delta, guiPositionX, guiPositionY, this);
+
+            if (graphic instanceof ButtonGraphic) {
+                if (((ButtonGraphic) graphic).hovered && !hoveredGraphics.contains(graphic)) {
+                    hoveredGraphics.add(graphic);
+                } else if (hoveredGraphics.contains(graphic) && !((ButtonGraphic) graphic).hovered) {
+                    hoveredGraphics.remove(graphic);
+                }
+            }
+
         }
         rendering = false;
+
+
 
         if (!graphicsToAdd.isEmpty()) {
             graphics.addAll(graphicsToAdd);
@@ -233,4 +246,19 @@ public class SimpleScreen extends Screen {
         return super.mouseReleased(pMouseX, pMouseY, pButton);
     }
 
+    @Override
+    public boolean mouseScrolled(double pMouseX, double pMouseY, double pDelta) {
+        for (Graphic graphic : graphics) {
+            graphic.OnMouseScroll((int) pMouseX, (int) pMouseY, pDelta);
+        }
+        return super.mouseScrolled((int) pMouseX, (int) pMouseY, pDelta);
+    }
+
+    @Override
+    public void onClose() {
+        for (Graphic graphic : graphics) {
+            graphic.OnScreenClose();
+        }
+        super.onClose();
+    }
 }

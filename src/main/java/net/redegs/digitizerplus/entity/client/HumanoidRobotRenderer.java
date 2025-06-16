@@ -12,6 +12,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -39,18 +40,21 @@ public class HumanoidRobotRenderer extends HumanoidMobRenderer<HumanoidRobot, Pl
 
     private void setModelProperties(HumanoidRobot robot) {
         PlayerModel<HumanoidRobot> companionModel = this.getModel();
-        HumanoidModel.ArmPose humanoidmodel$armpose = getArmPose(robot, InteractionHand.MAIN_HAND);
-        HumanoidModel.ArmPose humanoidmodel$armpose1 = getArmPose(robot, InteractionHand.OFF_HAND);
+
+        // ✅ This is what triggers crouch animation in the model
+        companionModel.crouching = robot.isCrouching();
+
+        HumanoidModel.ArmPose mainPose = getArmPose(robot, InteractionHand.MAIN_HAND);
+        HumanoidModel.ArmPose offPose = getArmPose(robot, InteractionHand.OFF_HAND);
 
         if (robot.getMainArm() == HumanoidArm.RIGHT) {
-            companionModel.rightArmPose = humanoidmodel$armpose;
-            companionModel.leftArmPose = humanoidmodel$armpose1;
+            companionModel.rightArmPose = mainPose;
+            companionModel.leftArmPose = offPose;
         } else {
-            companionModel.rightArmPose = humanoidmodel$armpose1;
-            companionModel.leftArmPose = humanoidmodel$armpose;
+            companionModel.rightArmPose = offPose;
+            companionModel.leftArmPose = mainPose;
         }
     }
-    
     private static HumanoidModel.ArmPose getArmPose(HumanoidRobot robot, InteractionHand hand) {
         ItemStack itemstack = robot.getItemInHand(hand);
         if (itemstack.isEmpty()) {
@@ -79,8 +83,16 @@ public class HumanoidRobotRenderer extends HumanoidMobRenderer<HumanoidRobot, Pl
         return TEXTURE;
     }
 
-    protected void scale(HumanoidRobot p_117798_, PoseStack p_117799_, float p_117800_) {
+    protected void scale(HumanoidRobot entity, PoseStack poseStack, float p_117800_) {
         float f = 0.9375F;
-        p_117799_.scale(f, f, f);
+
+//        if (entity.getPose() == Pose.CROUCHING) {
+//            poseStack.scale(1, 0.85f, 1); // Flatten slightly
+//        } else {
+        poseStack.scale(f, f, f);
+//        }
+
+
+
     }
 }

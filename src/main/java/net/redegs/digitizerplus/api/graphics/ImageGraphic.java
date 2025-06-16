@@ -1,6 +1,7 @@
 package net.redegs.digitizerplus.api.graphics;
 
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.resources.ResourceLocation;
 
 public class ImageGraphic extends Graphic{
@@ -16,7 +17,7 @@ public class ImageGraphic extends Graphic{
     }
 
     @Override
-    public void Draw(GuiGraphics guiGraphics, int mouseX, int mouseY, float deltaT, int guiPositionX, int guiPositionY) {
+    public void Draw(GuiGraphics guiGraphics, int mouseX, int mouseY, float deltaT, int guiPositionX, int guiPositionY, Screen screen) {
         dx = x+guiPositionX; dy = y+guiPositionY;
         guiGraphics.blit(texture, dx, dy, u, v, sx, sy);
     }

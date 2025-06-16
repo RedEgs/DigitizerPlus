@@ -1,11 +1,9 @@
 package net.redegs.digitizerplus;
 
 import com.mojang.logging.LogUtils;
-import dan200.computercraft.api.ComputerCraftAPI;
 import dan200.computercraft.api.peripheral.IPeripheral;
-import net.minecraft.client.Minecraft;
+
 import net.minecraft.client.gui.screens.MenuScreens;
-import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -19,23 +17,23 @@ import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
-import net.minecraftforge.event.server.ServerStartingEvent;
+import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.redegs.digitizerplus.api.SimpleScreen;
 import net.redegs.digitizerplus.block.ModBlocks;
 import net.redegs.digitizerplus.block.entity.DigitizerEntity;
 import net.redegs.digitizerplus.block.entity.ModBlockEntities;
-import net.redegs.digitizerplus.block.entity.renderer.DigitizerEntityRenderer;
+import net.redegs.digitizerplus.client.RobotDebugRenderer;
 import net.redegs.digitizerplus.entity.HumanoidRobot;
 import net.redegs.digitizerplus.entity.ModEntities;
 import net.redegs.digitizerplus.entity.client.HumanoidRobotRenderer;
 import net.redegs.digitizerplus.item.ModCreativeModTabs;
 import net.redegs.digitizerplus.item.ModItems;
+import net.redegs.digitizerplus.misc.Python;
 import net.redegs.digitizerplus.network.ModNetwork;
 import net.redegs.digitizerplus.peripheral.DigitizerPeripheral;
 import net.redegs.digitizerplus.screen.DigitizerScreen;
@@ -44,8 +42,8 @@ import net.redegs.digitizerplus.screen.StorageBlockScreen;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
-import java.awt.*;
 import java.util.function.Function;
+
 
 @Mod(DigitizerPlus.MOD_ID)
 public class DigitizerPlus {
@@ -65,6 +63,7 @@ public class DigitizerPlus {
 
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.addGenericListener(BlockEntity.class, DigitizerPlus::attachPeripherals);
+
     }
 
     public static void attachPeripherals(AttachCapabilitiesEvent<BlockEntity> event) {
@@ -112,10 +111,6 @@ public class DigitizerPlus {
         // Common setup logic (if any)
     }
 
-    @SubscribeEvent
-    public void onServerStarting(ServerStartingEvent event) {
-        // Server starting logic (if any)
-    }
 
     @Mod.EventBusSubscriber(modid = MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ClientModEvents {
@@ -125,6 +120,11 @@ public class DigitizerPlus {
             // Register the BlockEntityRenderer for DigitizerEntity
             MenuScreens.register(ModMenuTypes.DIGITIZER_MENU.get(), DigitizerScreen::new);
             MenuScreens.register(ModMenuTypes.STORAGE_BLOCK_MENU.get(), StorageBlockScreen::new);
+
+            MinecraftForge.EVENT_BUS.register(Python.class);
+            MinecraftForge.EVENT_BUS.addListener(RobotDebugRenderer::onRenderWorldLast);
+
+
         }
 
         @SubscribeEvent
@@ -146,7 +146,15 @@ public class DigitizerPlus {
             event.enqueueWork(() -> {
                 ModNetwork.register();
             });
+
         }
+
+        @SubscribeEvent
+        public void onServerStarting(ServerStartedEvent event) {
+            // Server starting logic (if any)
+
+        }
+
     }
 
 

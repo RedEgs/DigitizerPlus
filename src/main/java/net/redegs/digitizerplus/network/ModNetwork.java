@@ -6,6 +6,8 @@ import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 import net.redegs.digitizerplus.DigitizerPlus;
+import net.redegs.digitizerplus.network.packets.JepEditorPacket;
+import net.redegs.digitizerplus.network.packets.JepServerPacket;
 import net.redegs.digitizerplus.network.packets.SyncRobotPacket;
 
 public class ModNetwork {
@@ -26,6 +28,18 @@ public class ModNetwork {
                 SyncRobotPacket::decode,
                 SyncRobotPacket::handle);
 
+        INSTANCE.registerMessage(packetId++,
+                JepServerPacket.class,
+                JepServerPacket::encode,
+                JepServerPacket::decode,
+                JepServerPacket::handle);
+
+
+        INSTANCE.registerMessage(packetId++,
+                JepEditorPacket.class,
+                JepEditorPacket::encode,
+                JepEditorPacket::decode,
+                JepEditorPacket::handle);
 
 
 

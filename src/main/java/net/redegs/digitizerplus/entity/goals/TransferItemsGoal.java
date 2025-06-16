@@ -23,46 +23,47 @@ public class TransferItemsGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        return robot.hasProgrammer();
+//        return robot.hasProgrammer();
+        return false;
     }
 
     @Override
     public void start() {
-        if (robot.hasProgrammer()) return;
-
-
-
-        if (!waypoints.isEmpty()) {
-            waypointIndex = 0;
-            moveToNextWaypoint();
-        } else {
-            prnt("No waypoints available!");
-            this.stop();
-        }
+//        if (robot.hasProgrammer()) return;
+//
+//
+//
+//        if (!waypoints.isEmpty()) {
+//            waypointIndex = 0;
+//            moveToNextWaypoint();
+//        } else {
+//            prnt("No waypoints available!");
+//            this.stop();
+//        }
     }
 
     @Override
     public void tick() {
-        if (robot.hasProgrammer() || waypoints.isEmpty()) {
-            stop();
-            return;
-        }
-
-        BlockPos targetPosition = waypoints.get(waypointIndex);
-        double distance = entity.distanceToSqr(targetPosition.getX() + 0.5, targetPosition.getY(), targetPosition.getZ() + 0.5);
-
-        if (distance < 2.25D) { // Stop slightly before reaching the chest (1.5 block distance)
-            entity.getNavigation().stop(); // Ensure it doesn't walk onto the chest
-            selectNextWaypoint();
-        } else if (entity.getNavigation().isDone()) {
-            entity.getNavigation().moveTo(targetPosition.getX() + 0.5, targetPosition.getY(), targetPosition.getZ() + 0.5, 1.0D);
-        }
+//        if (robot.hasProgrammer() || waypoints.isEmpty()) {
+//            stop();
+//            return;
+//        }
+//
+//        BlockPos targetPosition = waypoints.get(waypointIndex);
+//        double distance = entity.distanceToSqr(targetPosition.getX() + 0.5, targetPosition.getY(), targetPosition.getZ() + 0.5);
+//
+//        if (distance < 2.25D) { // Stop slightly before reaching the chest (1.5 block distance)
+//            entity.getNavigation().stop(); // Ensure it doesn't walk onto the chest
+//            selectNextWaypoint();
+//        } else if (entity.getNavigation().isDone()) {
+//            entity.getNavigation().moveTo(targetPosition.getX() + 0.5, targetPosition.getY(), targetPosition.getZ() + 0.5, 1.0D);
+//        }
     }
 
-    @Override
-    public boolean canContinueToUse() {
-        return robot.hasProgrammer() && waypointIndex < waypoints.size();
-    }
+//    @Override
+//    public boolean canContinueToUse() {
+//        return robot.hasProgrammer() && waypointIndex < waypoints.size();
+//    }
 
     @Override
     public void stop() {

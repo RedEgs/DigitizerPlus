@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.world.entity.LivingEntity;
 import org.joml.Matrix4f;
@@ -25,8 +26,8 @@ public class EntityRenderer extends Graphic {
         this.entity = entity;
     }
 
-    public void Draw(GuiGraphics guiGraphics, int mouseX, int mouseY, float deltaT, int guiPositionX, int guiPositionY) {
-        super.Draw(guiGraphics, mouseX, mouseY, deltaT, guiPositionX, guiPositionY);
+    public void Draw(GuiGraphics guiGraphics, int mouseX, int mouseY, float deltaT, int guiPositionX, int guiPositionY, Screen screen) {
+        super.Draw(guiGraphics, mouseX, mouseY, deltaT, guiPositionX, guiPositionY, screen);
         this.offsetX = guiPositionX; this.offsetY = guiPositionY;
         renderEntityInInventoryFollowsMouse(guiGraphics, guiPositionX + this.x, guiPositionY + this.y, this.scale, mouseX - (guiPositionX + this.x), mouseY - (guiPositionY + this.y), this.entity);
     }
