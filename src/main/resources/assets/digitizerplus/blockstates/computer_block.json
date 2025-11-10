@@ -1,0 +1,14 @@
+{
+  "variants": {
+    "facing=north,rgb=false": { "model": "digitizerplus:block/computer_block" },
+    "facing=east,rgb=false":  { "model": "digitizerplus:block/computer_block", "y": 90 },
+    "facing=south,rgb=false": { "model": "digitizerplus:block/computer_block", "y": 180 },
+    "facing=west,rgb=false":  { "model": "digitizerplus:block/computer_block", "y": 270 },
+
+    "facing=north,rgb=true": { "model": "digitizerplus:block/computer_block_rgb" },
+    "facing=east,rgb=true":  { "model": "digitizerplus:block/computer_block_rgb", "y": 90 },
+    "facing=south,rgb=true": { "model": "digitizerplus:block/computer_block_rgb", "y": 180 },
+    "facing=west,rgb=true":  { "model": "digitizerplus:block/computer_block_rgb", "y": 270 }
+
+  }
+}

@@ -25,6 +25,7 @@ public class ModCreativeModTabs {
                         pOutput.accept(ModItems.STORAGE_CARD.get());
                         pOutput.accept(ModItems.PROGRAMMER_ITEM.get());
                         pOutput.accept(ModItems.ROBOT_SPAWNER.get());
+                        pOutput.accept(ModBlocks.COMPUTER_BLOCK.get());
 
                     })
                     .build());

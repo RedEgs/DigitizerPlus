@@ -8,16 +8,17 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.redegs.digitizerplus.python.RobotPythonRunner;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PythonBlock {
-    public String name;
-    public String id;
-    public String faceHit;
-    public List<Float> pos;
+    private String name;
+    private String id;
+    private String faceHit;
+    private List<Float> pos;
 
     private BlockPos blockPos;
     private BlockEntity blockEntity;
@@ -45,10 +46,17 @@ public class PythonBlock {
     }
 
     public BlockPos getBlockPosition() {
-        return this.blockPos;
+        if (RobotPythonRunner.getJepStatus()) {
+            return this.blockPos;
+        } else {
+            return null;
+        }
     }
-
     public BlockEntity getBlockEntity() {
-        return this.blockEntity;
+        if (RobotPythonRunner.getJepStatus()) {
+            return this.blockEntity;
+        } else {
+            return null;
+        }
     }
 }

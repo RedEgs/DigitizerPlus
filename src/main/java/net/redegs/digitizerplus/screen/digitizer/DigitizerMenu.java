@@ -1,4 +1,4 @@
-package net.redegs.digitizerplus.screen;
+package net.redegs.digitizerplus.screen.digitizer;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
@@ -8,24 +8,22 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.SlotItemHandler;
 import net.redegs.digitizerplus.block.ModBlocks;
-import net.redegs.digitizerplus.block.StorageBlock;
 import net.redegs.digitizerplus.block.entity.DigitizerEntity;
-import net.minecraftforge.items.IItemHandler;
-import net.redegs.digitizerplus.block.entity.StorageBlockEntity;
 import net.redegs.digitizerplus.item.ModItems;
+import net.redegs.digitizerplus.screen.ModMenuTypes;
 
 
-
-class StorageCardRestrictedSlot extends SlotItemHandler {
-    public StorageCardRestrictedSlot(IItemHandler itemHandler, int index, int xPosition, int yPosition) {
+class LinkerRestrictedSlot extends SlotItemHandler {
+    public LinkerRestrictedSlot(IItemHandler itemHandler, int index, int xPosition, int yPosition) {
         super(itemHandler, index, xPosition, yPosition);
     }
 
     @Override
     public boolean mayPlace(ItemStack stack) {
-        if (stack.getItem() != ModItems.STORAGE_CARD.get()) {
+        if (stack.getItem() != ModItems.LINKER.get()) {
             return false;
         } else {
             return true;
@@ -34,21 +32,20 @@ class StorageCardRestrictedSlot extends SlotItemHandler {
     }
 }
 
-public class StorageBlockMenu extends AbstractContainerMenu {
-    public final StorageBlockEntity blockEntity;
+public class DigitizerMenu extends AbstractContainerMenu {
+    public final DigitizerEntity blockEntity;
     private final Level level;
     private final ContainerData data;
 
-
-    public StorageBlockMenu(int containerId, Inventory inv, FriendlyByteBuf extraData) {
-        this(containerId, inv, inv.player.level().getBlockEntity(extraData.readBlockPos()), new SimpleContainerData(4));
+    public DigitizerMenu(int containerId, Inventory inv, FriendlyByteBuf extraData) {
+        this(containerId, inv, inv.player.level().getBlockEntity(extraData.readBlockPos()), new SimpleContainerData(1));
 
     }
 
-    public StorageBlockMenu(int containerId, Inventory inv, BlockEntity entity, ContainerData data) {
-        super(ModMenuTypes.STORAGE_BLOCK_MENU.get(), containerId);
-        checkContainerSize(inv, 4);
-        blockEntity = ((StorageBlockEntity) entity);
+    public DigitizerMenu(int containerId, Inventory inv, BlockEntity entity, ContainerData data) {
+        super(ModMenuTypes.DIGITIZER_MENU.get(), containerId);
+        checkContainerSize(inv, 1);
+        blockEntity = ((DigitizerEntity) entity);
         this.level = inv.player.level();
         this.data = data;
 
@@ -56,11 +53,7 @@ public class StorageBlockMenu extends AbstractContainerMenu {
         addPlayerHotbar(inv);
 
         this.blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER).ifPresent(iItemHandler -> {
-            this.addSlot(new StorageCardRestrictedSlot(iItemHandler, 0, 72, 24));
-            this.addSlot(new StorageCardRestrictedSlot(iItemHandler, 1, 90, 24));
-            this.addSlot(new StorageCardRestrictedSlot(iItemHandler, 2, 72, 42));
-            this.addSlot(new StorageCardRestrictedSlot(iItemHandler, 3, 90, 42));
-
+            this.addSlot(new LinkerRestrictedSlot(iItemHandler, 0, 80, 27));
         });
 
 
@@ -78,7 +71,7 @@ public class StorageBlockMenu extends AbstractContainerMenu {
     private static final int TE_INVENTORY_FIRST_SLOT_INDEX = VANILLA_FIRST_SLOT_INDEX + VANILLA_SLOT_COUNT;
 
     // THIS YOU HAVE TO DEFINE!
-    private static final int TE_INVENTORY_SLOT_COUNT = 4;  // must be the number of slots you have!
+    private static final int TE_INVENTORY_SLOT_COUNT = 1;  // must be the number of slots you have!
 
     @Override
     public ItemStack quickMoveStack(Player playerIn, int pIndex) {
@@ -116,7 +109,7 @@ public class StorageBlockMenu extends AbstractContainerMenu {
     @Override
     public boolean stillValid(Player pPlayer) {
         return stillValid(ContainerLevelAccess.create(level, blockEntity.getBlockPos()),
-                pPlayer, ModBlocks.STORAGE_BLOCK.get());
+                pPlayer, ModBlocks.DIGITIZER_BLOCK.get());
     }
 
     private void addPlayerInventory(Inventory playerInventory) {
@@ -132,8 +125,4 @@ public class StorageBlockMenu extends AbstractContainerMenu {
             this.addSlot(new Slot(playerInventory, i, 8 + i * 18, 142));
         }
     }
-
-
-
-
 }

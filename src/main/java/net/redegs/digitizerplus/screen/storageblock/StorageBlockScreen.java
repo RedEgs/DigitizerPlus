@@ -1,4 +1,4 @@
-package net.redegs.digitizerplus.screen;
+package net.redegs.digitizerplus.screen.storageblock;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;

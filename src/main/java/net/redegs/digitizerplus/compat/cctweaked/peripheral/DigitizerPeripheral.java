@@ -1,9 +1,8 @@
-package net.redegs.digitizerplus.peripheral;
+package net.redegs.digitizerplus.compat.cctweaked.peripheral;
 
 import dan200.computercraft.api.lua.*;
 import dan200.computercraft.api.peripheral.IComputerAccess;
 import dan200.computercraft.api.peripheral.IPeripheral;
-import it.unimi.dsi.fastutil.Hash;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -12,19 +11,16 @@ import dan200.computercraft.api.peripheral.AttachedComputerSet;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.redegs.digitizerplus.block.DigitizerBlock;
-import net.redegs.digitizerplus.block.ModBlocks;
 import net.redegs.digitizerplus.block.entity.DigitizerEntity;
 import net.redegs.digitizerplus.block.entity.StorageBlockEntity;
 import net.redegs.digitizerplus.item.custom.StorageCardItem;
-import net.redegs.digitizerplus.misc.DigitalRegister;
-import net.redegs.digitizerplus.misc.DigitalStack;
-import net.redegs.digitizerplus.misc.DigitizerDataSaver;
+import net.redegs.digitizerplus.misc.digitals.DigitalRegister;
+import net.redegs.digitizerplus.misc.digitals.DigitalStack;
+import net.redegs.digitizerplus.misc.digitals.DigitizerDataSaver;
 
 import javax.annotation.Nullable;
 import java.util.*;

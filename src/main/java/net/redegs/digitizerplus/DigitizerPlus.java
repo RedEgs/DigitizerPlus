@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.CapabilityManager;
@@ -17,6 +18,7 @@ import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
+import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -27,28 +29,62 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.redegs.digitizerplus.block.ModBlocks;
 import net.redegs.digitizerplus.block.entity.DigitizerEntity;
 import net.redegs.digitizerplus.block.entity.ModBlockEntities;
+import net.redegs.digitizerplus.client.Keybindings;
 import net.redegs.digitizerplus.client.RobotDebugRenderer;
+import net.redegs.digitizerplus.computer.ComputerManager;
 import net.redegs.digitizerplus.entity.HumanoidRobot;
 import net.redegs.digitizerplus.entity.ModEntities;
 import net.redegs.digitizerplus.entity.client.HumanoidRobotRenderer;
+import net.redegs.digitizerplus.imgui.Imgui;
 import net.redegs.digitizerplus.item.ModCreativeModTabs;
 import net.redegs.digitizerplus.item.ModItems;
-import net.redegs.digitizerplus.misc.Python;
+import net.redegs.digitizerplus.misc.commands.Python;
 import net.redegs.digitizerplus.network.ModNetwork;
-import net.redegs.digitizerplus.peripheral.DigitizerPeripheral;
-import net.redegs.digitizerplus.screen.DigitizerScreen;
-import net.redegs.digitizerplus.screen.ModMenuTypes;
-import net.redegs.digitizerplus.screen.StorageBlockScreen;
+import net.redegs.digitizerplus.compat.cctweaked.peripheral.DigitizerPeripheral;
+import net.redegs.digitizerplus.screen.*;
+import net.redegs.digitizerplus.screen.digitizer.DigitizerScreen;
+import net.redegs.digitizerplus.screen.robot.RobotScreen;
+import net.redegs.digitizerplus.screen.storageblock.StorageBlockScreen;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.function.Function;
 
 
+// TODO -------
+
+// INGAME CODE EDITOR
+    // LINTING
+// MAKE THE WRAPPERS USEFULL
+// MAKE THE DEFAULT COMPUTERS RESUME SCRIPT WHEN LOADING WORLD
+// MAKE COMPUTERS DROP THEMSELVES WITH THEIR UUID.
+
+
+// GRAPHICS MODE ON THE TERMINAL
+// COMPONENT BASED BALANCING
+// CRAFTING RECIPES
+// CODE TO NOTEBOOK AND VICE VERSA (UPLOADIGN OF CODE (CLIENT<->SERVER))
+// ROBOT LIKE FILE SYSTEM (SAVING, LOADING, VIRTUAL DIRECTORIES...)
+// PSUEDO STATE MACHINE
+// MAKE VEC3s NATIVE TO PYTHON
+// FINISH EQUIPPING OF ARMOUR
+// MAKE ROBOTS INVENTORIES READABLE
+// ALLOW BUILDING
+// ALLOW MACHINES AND WORKBENCHES TO BE USED
+// ALLOW FAKE PLAYER INTERACTION
+// ADD THE ABILITY TO READ SCHEMATICS
+// IDENTIFY AND WORK WITH OTHER ROBOTS
+// EVEN COOLER GUI
+
+
+
+
+
 @Mod(DigitizerPlus.MOD_ID)
 public class DigitizerPlus {
     public static final String MOD_ID = "digitizerplus";
     public static final Logger LOGGER = LogUtils.getLogger();
+    public static final ComputerManager COMPUTER_MANAGER = new ComputerManager();
 
     public DigitizerPlus(FMLJavaModLoadingContext context) {
         IEventBus modEventBus = context.getModEventBus();
@@ -120,17 +156,25 @@ public class DigitizerPlus {
             // Register the BlockEntityRenderer for DigitizerEntity
             MenuScreens.register(ModMenuTypes.DIGITIZER_MENU.get(), DigitizerScreen::new);
             MenuScreens.register(ModMenuTypes.STORAGE_BLOCK_MENU.get(), StorageBlockScreen::new);
+            MenuScreens.register(ModMenuTypes.ROBOT_MENU.get(), RobotScreen::new);
 
             MinecraftForge.EVENT_BUS.register(Python.class);
+            MinecraftForge.EVENT_BUS.register(ComputerManager.class);
+
             MinecraftForge.EVENT_BUS.addListener(RobotDebugRenderer::onRenderWorldLast);
-
-
+            MinecraftForge.EVENT_BUS.addListener(Imgui::onWorldUnload);
         }
 
         @SubscribeEvent
         public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
             event.registerEntityRenderer(ModEntities.HUMANOID_ROBOT.get(), HumanoidRobotRenderer::new);
         }
+
+        @SubscribeEvent
+        public static void registerKeys(RegisterKeyMappingsEvent event) {
+            event.register(Keybindings.INSTANCE.openServerDebug);
+        }
+
     }
 
     @Mod.EventBusSubscriber(modid = MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
@@ -152,8 +196,13 @@ public class DigitizerPlus {
         @SubscribeEvent
         public void onServerStarting(ServerStartedEvent event) {
             // Server starting logic (if any)
+        }
+
+        @SubscribeEvent
+        public void onWorldLoad(LevelEvent.Load event) {
 
         }
+
 
     }
 

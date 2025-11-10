@@ -1,16 +1,17 @@
 package net.redegs.digitizerplus.imgui;
 
-import com.mojang.blaze3d.platform.Window;
 import imgui.*;
 import imgui.flag.*;
 import imgui.gl3.ImGuiImplGl3;
 import imgui.glfw.ImGuiImplGlfw;
-import imgui.internal.ImGuiDockNode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.Level;
+import net.minecraftforge.event.level.LevelEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import net.redegs.digitizerplus.DigitizerPlus;
-import net.redegs.digitizerplus.screen.ImGuiScreen;
-import org.checkerframework.checker.units.qual.A;
+import net.redegs.digitizerplus.screen.imgui.ImGuiScreen;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.glfw.GLFW;
 
@@ -20,7 +21,7 @@ import java.util.ArrayList;
 import static org.lwjgl.glfw.GLFW.glfwGetCurrentContext;
 import static org.lwjgl.glfw.GLFW.glfwMakeContextCurrent;
 
-
+@Mod.EventBusSubscriber(modid = DigitizerPlus.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class Imgui {
     private static boolean initialized = false;
     private static final ImGuiImplGlfw imGuiGlfw = new ImGuiImplGlfw();
@@ -99,8 +100,6 @@ public class Imgui {
 
     }
 
-
-
     public static void Render() {
         if (!initialized) return; // Only render if ImGui is initialised
 
@@ -133,7 +132,6 @@ public class Imgui {
 
     }
 
-
     public static boolean CheckFocus() {
         if (!initialized) return false;
 
@@ -154,16 +152,39 @@ public class Imgui {
     private static void focusContext(int ContextID) {
         if (!initialized) return;
 
+        try{
+            if (renderList.get(ContextID) != null) {
+                screenFocused = true;
+                GuiContext context = renderList.get(ContextID);
+
+    //            System.out.println("OPening");
+                ImGui.setNextWindowFocus();
+                //ImGui.getIO().setMousePos(ImGui.getWindowPosX(), ImGui.getWindowPosY()) ;
+
+                context.Active = true;
+                guiScreen.open();
+            }
+        } catch (IndexOutOfBoundsException e) {
+            DigitizerPlus.LOGGER.warn("Tried to access ImGui render list  index out of bounds: " + e.getMessage());
+
+        }
+    }
+
+    public static void DestroyGuiContext(int ContextID) {
+        if (!initialized) return;
         if (renderList.get(ContextID) != null) {
-            screenFocused = true;
             GuiContext context = renderList.get(ContextID);
+            context.Destroy();
+        }
+    }
 
-//            System.out.println("OPening");
-            ImGui.setNextWindowFocus();
-            //ImGui.getIO().setMousePos(ImGui.getWindowPosX(), ImGui.getWindowPosY()) ;
+    public static void DestroyGuiContext(GuiContext context) {
+        DestroyGuiContext(context.ContextID-1);
+    }
 
-            context.Active = true;
-            guiScreen.open();
+    public static void DestroyAllContexts() {
+        for (GuiContext context : renderList) {
+            context.Destroy();
         }
     }
 
@@ -182,5 +203,18 @@ public class Imgui {
         }
 
         return null;
+    }
+
+
+    @SubscribeEvent
+    public static void onWorldUnload(LevelEvent.Unload event) {
+        if (renderList.size() >= 0) {
+            return;
+        }
+
+        Level level = (Level) event.getLevel();
+        if (!level.isClientSide) {
+            DestroyAllContexts();
+        }
     }
 }

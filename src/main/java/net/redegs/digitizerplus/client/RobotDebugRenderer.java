@@ -5,13 +5,17 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.font.FontSet;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.BlockRenderDispatcher;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
@@ -28,6 +32,7 @@ import net.redegs.digitizerplus.python.datatypes.PythonBlock;
 import org.joml.Matrix4f;
 
 import java.util.List;
+import java.util.function.Function;
 
 @Mod.EventBusSubscriber(modid = DigitizerPlus.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public class RobotDebugRenderer {
@@ -41,6 +46,7 @@ public class RobotDebugRenderer {
         if (!mc.options.renderDebug) return;
         ClientLevel level = mc.level;
 
+        // RENDER HITBOXES AND SIGHT CONE
         Vec3 cameraPosition = mc.gameRenderer.getMainCamera().getPosition();
         RenderSystem.disableDepthTest();
         for (Entity entity : level.entitiesForRendering()) {
@@ -81,9 +87,16 @@ public class RobotDebugRenderer {
                 drawLineManual(event.getPoseStack(), eyePosition, rayLocation, 1.0F, 0.0F, 1.0F, 1.0F);
                 //drawCircle(event.getPoseStack(), entity.position().subtract(cameraPosition), (float) (Math.pow(HumanoidRobot.VIEWDISTANCE, 2) + HumanoidRobot.VIEWDISTANCE), 64, 0.0F, 1.0F, 1.0F, 1.0F);
                 drawVisionCone(event.getPoseStack(), entity.position().subtract(cameraPosition), robot.getLookAngle().normalize(), (float) HumanoidRobot.FOV * 2, (float) (Math.pow(HumanoidRobot.VIEWDISTANCE, 2) + HumanoidRobot.VIEWDISTANCE), 128, 1.0F, 1.0F, 1.0F, 1.0F);
+
             }
         }
         RenderSystem.enableDepthTest();
+
+        // RENDER NAMETAG
+
+
+
+
     }
 
     private static float blockAtRay(HitResult hr, HumanoidRobot robot) {

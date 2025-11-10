@@ -6,10 +6,10 @@ import net.minecraft.world.phys.Vec3;
 import javax.annotation.Nullable;
 
 public class PythonEntity {
-    public String name;
-    public int id;
-    public String type;
-    public Vec3 position;
+    private String name;
+    private int id;
+    private String type;
+    private Vec3 position;
 
     public PythonEntity(Entity entity) {
         this.name = entity.getName().getString();
@@ -22,4 +22,6 @@ public class PythonEntity {
     public String toString() {
         return this.name;
     }
+
+    public Vec3 getPosition() {return this.position; }
 }

@@ -1,4 +1,4 @@
-package net.redegs.digitizerplus.misc;
+package net.redegs.digitizerplus.misc.digitals;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;

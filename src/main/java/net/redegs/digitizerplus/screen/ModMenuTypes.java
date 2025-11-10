@@ -10,6 +10,9 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import net.redegs.digitizerplus.DigitizerPlus;
 import net.redegs.digitizerplus.api.SimpleMenu;
+import net.redegs.digitizerplus.screen.digitizer.DigitizerMenu;
+import net.redegs.digitizerplus.screen.robot.RobotMenu;
+import net.redegs.digitizerplus.screen.storageblock.StorageBlockMenu;
 
 public class ModMenuTypes {
     public static final DeferredRegister<MenuType<?>> MENUS =
@@ -24,6 +27,8 @@ public class ModMenuTypes {
     public static final RegistryObject<MenuType<SimpleMenu>> SIMPLE_MENU =
             MENUS.register("simple_menu", () -> IForgeMenuType.create(SimpleMenu::new));
 
+    public static final RegistryObject<MenuType<RobotMenu>> ROBOT_MENU =
+            registerMenuType("robot_menu", (IContainerFactory<RobotMenu>) RobotMenu::new);
 
     private static <T extends AbstractContainerMenu>RegistryObject<MenuType<T>> registerMenuType(String name, IContainerFactory<T> factory) {
         return MENUS.register(name, () -> IForgeMenuType.create(factory));

@@ -8,7 +8,11 @@ import net.minecraftforge.network.simple.SimpleChannel;
 import net.redegs.digitizerplus.DigitizerPlus;
 import net.redegs.digitizerplus.network.packets.JepEditorPacket;
 import net.redegs.digitizerplus.network.packets.JepServerPacket;
-import net.redegs.digitizerplus.network.packets.SyncRobotPacket;
+import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalKeypressPacket;
+import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalScreenPacket;
+import net.redegs.digitizerplus.network.packets.computer.terminal.robot.RobotTerminalKeypressPacket;
+import net.redegs.digitizerplus.network.packets.computer.terminal.robot.RobotTerminalScreenPacket;
+import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalSyncPacket;
 
 public class ModNetwork {
     private static final String PROTOCOL_VERSION = "1";
@@ -23,12 +27,6 @@ public class ModNetwork {
 
     public static void register() {
         INSTANCE.registerMessage(packetId++,
-                SyncRobotPacket.class,
-                SyncRobotPacket::encode,
-                SyncRobotPacket::decode,
-                SyncRobotPacket::handle);
-
-        INSTANCE.registerMessage(packetId++,
                 JepServerPacket.class,
                 JepServerPacket::encode,
                 JepServerPacket::decode,
@@ -41,6 +39,44 @@ public class ModNetwork {
                 JepEditorPacket::decode,
                 JepEditorPacket::handle);
 
+        INSTANCE.registerMessage(packetId++,
+                TerminalSyncPacket.class,
+                TerminalSyncPacket::encode,
+                TerminalSyncPacket::decode,
+                TerminalSyncPacket::handle
+        );
+
+        INSTANCE.registerMessage(packetId++,
+                TerminalScreenPacket.class,
+                TerminalScreenPacket::encode,
+                TerminalScreenPacket::decode,
+                TerminalScreenPacket::handle
+        );
+
+        INSTANCE.registerMessage(packetId++,
+                TerminalKeypressPacket.class,
+                TerminalKeypressPacket::encode,
+                TerminalKeypressPacket::decode,
+                TerminalKeypressPacket::handle
+        );
+
+
+
+        INSTANCE.registerMessage(packetId++,
+                RobotTerminalKeypressPacket.class,
+                RobotTerminalKeypressPacket::encode,
+                RobotTerminalKeypressPacket::decode,
+                RobotTerminalKeypressPacket::handle
+        );
+
+        INSTANCE.registerMessage(packetId++,
+                RobotTerminalScreenPacket.class,
+                RobotTerminalScreenPacket::encode,
+                RobotTerminalScreenPacket::decode,
+                RobotTerminalScreenPacket::handle
+        );
+
+        //INSTANCE.registerMessage(packetId)
 
 
     }

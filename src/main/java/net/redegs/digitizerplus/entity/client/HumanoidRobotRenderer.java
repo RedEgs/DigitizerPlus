@@ -1,6 +1,8 @@
 package net.redegs.digitizerplus.entity.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.model.geom.ModelLayers;
@@ -8,6 +10,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.HumanoidMobRenderer;
 import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
@@ -18,6 +21,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.UseAnim;
 import net.redegs.digitizerplus.entity.HumanoidRobot;
+import org.joml.Matrix4f;
 
 public class HumanoidRobotRenderer extends HumanoidMobRenderer<HumanoidRobot, PlayerModel<HumanoidRobot>> {
     private static final ResourceLocation TEXTURE = new ResourceLocation("digitizerplus:textures/entity/humanoid_robot.png");
@@ -77,6 +81,46 @@ public class HumanoidRobotRenderer extends HumanoidMobRenderer<HumanoidRobot, Pl
             return HumanoidModel.ArmPose.ITEM;
         }
     }
+
+    @Override
+    protected void renderNameTag(HumanoidRobot pEntity, Component pDisplayName, PoseStack pMatrixStack, MultiBufferSource pBuffer, int pPackedLight) {
+        String name = pEntity.getUUID().toString();
+
+        double d0 = this.entityRenderDispatcher.distanceToSqr(pEntity);
+        if (net.minecraftforge.client.ForgeHooksClient.isNameplateInRenderDistance(pEntity, d0)) {
+            boolean flag = !pEntity.isDiscrete();
+            float f = pEntity.getNameTagOffsetY();
+
+            int i = "deadmau5".equals(name) ? -10 : 0;
+
+            pMatrixStack.pushPose();
+            pMatrixStack.translate(0.0F, f, 0.0F);
+            pMatrixStack.mulPose(this.entityRenderDispatcher.cameraOrientation());
+            pMatrixStack.scale(-0.025F, -0.025F, 0.025F);
+            Matrix4f matrix4f = pMatrixStack.last().pose();
+            float f1 = Minecraft.getInstance().options.getBackgroundOpacity(0.25F);
+            int j = (int)(f1 * 255.0F) << 24;
+            Font font = this.getFont();
+            float f2 = (float)(-font.width(name) / 2);
+            font.drawInBatch(name, f2, (float)i, 553648127, false, matrix4f, pBuffer, flag ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL, j, pPackedLight);
+            if (flag) {
+                font.drawInBatch(name, f2, (float)i, -1, false, matrix4f, pBuffer, Font.DisplayMode.NORMAL, 0, pPackedLight);
+            }
+
+            pMatrixStack.popPose();
+        }
+    }
+
+    @Override
+    protected boolean shouldShowName(HumanoidRobot pEntity) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.options.renderDebug)  {
+            return true;
+        }
+        return super.shouldShowName(pEntity);
+    }
+
+
 
     @Override
     public ResourceLocation getTextureLocation(HumanoidRobot humanoidRobot) {

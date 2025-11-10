@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "digitizerplus:block/digitizer_side",
+    "up": "digitizerplus:block/digitizer_top",
+    "down": "digitizerplus:block/digitizer_top",
+    "north": "digitizerplus:block/computer_front",
+    "south": "digitizerplus:block/digitizer_back",
+    "east": "digitizerplus:block/digitizer_side",
+    "west": "digitizerplus:block/digitizer_side"
+  }
+}

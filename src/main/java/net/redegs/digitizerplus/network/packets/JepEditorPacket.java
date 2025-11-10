@@ -55,6 +55,9 @@ public class JepEditorPacket {
                 HashMap<Integer, String> errorMarker = PythonErrorResolver.resolveError(packet.stacktrace, packet.errorMsg);
                 guiContext.threadRunning = false;
                 if (errorMarker.size() >= 1) guiContext.showError(errorMarker);
+                if (guiContext.detailedDebug.get()) {
+                    System.out.println(packet.stacktrace);
+                }
 
 
 

@@ -1,4 +1,4 @@
-package net.redegs.digitizerplus.misc;
+package net.redegs.digitizerplus.misc.digitals;
 
 public class DigitalRegister {
     private final int registerIndex;

@@ -1,13 +1,7 @@
 package net.redegs.digitizerplus.imgui;
 
-import com.mojang.authlib.minecraft.client.MinecraftClient;
-import imgui.ImGui;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.player.Player;
-import net.redegs.digitizerplus.screen.ImGuiScreen;
 
 public class GuiContext {
     public int ContextID;
@@ -32,6 +26,7 @@ public class GuiContext {
     }
 
     public void Destroy() {
+        this.Active = false;
         Imgui.renderList.remove(this.ContextID-1);
     }
 

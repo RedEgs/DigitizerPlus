@@ -3,7 +3,9 @@ package net.redegs.digitizerplus.imgui.guis;
 import imgui.*;
 import imgui.extension.texteditor.TextEditor;
 import imgui.flag.ImGuiWindowFlags;
+import imgui.type.ImBoolean;
 import imgui.type.ImString;
+import net.redegs.digitizerplus.DigitizerPlus;
 import net.redegs.digitizerplus.entity.HumanoidRobot;
 import net.redegs.digitizerplus.imgui.GuiContext;
 import net.redegs.digitizerplus.network.ModNetwork;
@@ -35,6 +37,7 @@ public class RobotUI extends GuiContext {
         """;
 
     public boolean threadRunning = false;
+    public ImBoolean detailedDebug = new ImBoolean(false);
 
     public RobotUI(HumanoidRobot robotParent) {
         super();
@@ -50,40 +53,68 @@ public class RobotUI extends GuiContext {
     @Override
     public void Main() {
         ImGui.setNextWindowSize(500, 400);
-        ImGui.begin("Robot " + ContextID + " Code Editor", ImGuiWindowFlags.MenuBar);
+        ImGui.begin("Robot " + ContextID + " Information", ImGuiWindowFlags.MenuBar);
+
+        Path filePath;
+        try {
+            filePath = DigitizerPlus.COMPUTER_MANAGER.PathFromUUID(RobotParent.getUUID());
+        } catch (Exception e) {
+            DigitizerPlus.LOGGER.warn("couldn't resolve file path");
+            throw new RuntimeException(e);
+        }
+
+
 
         if (ImGui.beginMenuBar()) {
             if (ImGui.beginMenu("File")) {
                 // File code shi
                 if (ImGui.menuItem("Save File", "Ctrl+S")) {
                     try {
-                        Files.writeString(Path.of("recent.py"), codeEditor.getText());
+                        Path recentFilePath = filePath.resolve("recent.py");
+                        if (!Files.exists(recentFilePath)) {
+
+                            Files.createFile(recentFilePath);
+                        }
+
+                        Files.writeString(filePath.resolve("recent.py"), codeEditor.getText());
                     }
                     catch (IOException e) {
                         System.err.println("An error occurred: " + e.getMessage());
                     }
-
                 }
 
                 if (ImGui.menuItem("Load File")) {
                     try {
-                        String text = Files.readString(Path.of("recent.py"));
-                        codeEditor.setText(text);
+                        if (!Files.exists(filePath.resolve("recent.py"))) {
+                            codeEditor.setText(_boilerplate);
+                        } else {
+                            String text = Files.readString(filePath.resolve("recent.py"));
+                            codeEditor.setText(text);
+                        }
                     }  catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 }
-
                 ImGui.endMenu();
+
+
             }
 
-            if (!this.threadRunning){
+            if (!RobotParent.isCodeExecuting()){
                 if (ImGui.beginMenu("Run")) {
                     // Execute code shii
                     if (ImGui.menuItem("Execute", "F5") && !this.threadRunning) {
                         // Sends python code to server for server-side execution
 
-                        try { ModNetwork.sendToServer(new JepServerPacket(RobotParent.getId(), codeEditor.getText()));
+                        try {
+                            ModNetwork.sendToServer(new JepServerPacket(RobotParent.getId(), codeEditor.getText()));
+
+                            Path recentFilePath = filePath.resolve("recent.py");
+                            if (!Files.exists(recentFilePath)) {
+                                Files.createFile(recentFilePath);
+                            }
+                            Files.writeString(filePath.resolve("recent.py"), codeEditor.getText());
+
                         } catch (Exception e) {
                             this.threadRunning = false;
                             System.out.println(e);
@@ -149,6 +180,8 @@ public class RobotUI extends GuiContext {
         }
 
         codeEditor.render("Code codeEditor");
+        ImGui.checkbox("Enable detailed errors", this.detailedDebug);
+
         ImGui.end();
     }
 

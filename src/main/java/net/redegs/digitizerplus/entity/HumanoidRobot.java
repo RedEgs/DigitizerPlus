@@ -1,12 +1,20 @@
 package net.redegs.digitizerplus.entity;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.*;
+
+import java.io.IOException;
+import java.nio.file.Path;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -19,39 +27,63 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.*;
-import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.server.ServerLifecycleHooks;
-import net.redegs.digitizerplus.entity.goals.MoveToLocationGoal;
-import net.redegs.digitizerplus.entity.goals.TransferItemsGoal;
-import net.redegs.digitizerplus.imgui.Imgui;
+import net.redegs.digitizerplus.DigitizerPlus;
+import net.redegs.digitizerplus.computer.terminal.RobotTerminal;
 import net.redegs.digitizerplus.imgui.guis.RobotUI;
-import net.redegs.digitizerplus.python.RobotPythonRunner;
-import net.redegs.digitizerplus.python.RobotPythonWrapper;
+import net.redegs.digitizerplus.computer.ComputerManager;
 import net.redegs.digitizerplus.network.ModNetwork;
-import net.redegs.digitizerplus.network.packets.SyncRobotPacket;
+import net.redegs.digitizerplus.network.packets.JepServerPacket;
+import net.redegs.digitizerplus.network.packets.computer.terminal.robot.RobotTerminalScreenPacket;
+import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalSyncPacket;
+import net.redegs.digitizerplus.python.RobotPythonRunner;
+import net.redegs.digitizerplus.python.wrappers.PythonRobotWrapper;
+import net.redegs.digitizerplus.computer.terminal.Terminal;
+import org.apache.logging.log4j.core.tools.picocli.CommandLine;
 
 import javax.annotation.Nullable;
+import java.nio.file.Files;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class HumanoidRobot extends Mob {
 
     public static final double MOVEMENT_SPEED = 0.25;
     public static final double VIEWDISTANCE = 4.0;
     public static final double FOV = 70.0;
+    public static final double INTERACT_RANGE = 4.5;
     public static final int INVENTORY_SIZE = 27;
+    public static final int MAX_ENERGY = 1000;
 
-    public boolean canPickupLoot = true;
+    public boolean canPickupLoot = false;
+    public Vec3 lastLookBlock;
+    private boolean queueScript = false;
+    private boolean pendingResume = false;
 
     private Level level;
     public RobotUI robotUI;
 
-    public RobotPythonWrapper pythonWrapper;
+    public Terminal terminal;
+
+
+
+    public PythonRobotWrapper pythonWrapper;
     public HashMap<Thread, RobotPythonRunner> pythonThreads;
+
+    private static final EntityDataAccessor<Boolean> CODE_EXECUTING =
+            SynchedEntityData.defineId(HumanoidRobot.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> ENERGY =
+            SynchedEntityData.defineId(HumanoidRobot.class, EntityDataSerializers.INT);
+
+
 
     public HumanoidRobot(EntityType<? extends Mob> entityType, Level level) {
         super(entityType, level);
@@ -62,14 +94,87 @@ public class HumanoidRobot extends Mob {
         this.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(MOVEMENT_SPEED);
 
         this.setCanPickUpLoot(this.canPickupLoot);
+
+//        this.buffer = new char[13][35];
+//        this.terminalScreen = new TerminalScreen(this.buffer);
+
+        this.terminal = new RobotTerminal(this, 12, 35);
+
         if (level.isClientSide) {
             robotUI = new RobotUI(this);
+
         } else {
-            pythonWrapper = new RobotPythonWrapper(this);
+            pythonWrapper = new PythonRobotWrapper(this);
             pythonThreads = new HashMap<>();
+
         }
 
+//        try {
+//            Path mainPath = ComputerManager.getMainPath();
+//            Files.createDirectory(mainPath.resolve(robotUUID.toString()));
+//
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
 
+
+    }
+
+
+    @Override
+    protected void defineSynchedData() {
+        super.defineSynchedData();
+        this.entityData.define(CODE_EXECUTING, false);
+        this.entityData.define(ENERGY, 0);
+    }
+
+    private void createRobotFileLocation() {
+        try {
+            Path mainPath = DigitizerPlus.COMPUTER_MANAGER.getMainPath();
+            Files.createDirectory(mainPath.resolve(getUUID().toString()));
+
+        } catch (IOException e) {
+            DigitizerPlus.LOGGER.warn("FAILED TO CREATE ROBOT DIR");
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor pLevel, DifficultyInstance pDifficulty, MobSpawnType pReason, @org.jetbrains.annotations.Nullable SpawnGroupData pSpawnData, @org.jetbrains.annotations.Nullable CompoundTag pDataTag) {
+        super.finalizeSpawn(pLevel, pDifficulty, pReason, pSpawnData, pDataTag);
+
+        createRobotFileLocation();
+
+        return pSpawnData;
+    }
+
+    public void addEnergy(int amount) {
+        if (!this.level.isClientSide) {
+            this.entityData.set(ENERGY, Math.max(0, Math.min(this.MAX_ENERGY, this.entityData.get(ENERGY) + amount)));
+        }
+    }
+    public void removeEnergy(int amount) {
+        if (!this.level.isClientSide) {
+            this.entityData.set(ENERGY, Math.max(0, Math.min(this.MAX_ENERGY, this.entityData.get(ENERGY) - amount)));
+        }
+    }
+    public boolean consumeEnergy(int amount) {
+        if (!this.level.isClientSide) {
+            if (this.entityData.get(ENERGY) < (this.entityData.get(ENERGY) - amount)) {
+                return false;
+            } else {
+                removeEnergy(amount);
+                return true;
+            }
+        }
+        return false;
+    }
+    public float getEnergyPercentage() {
+        return ((float) this.entityData.get(ENERGY) / MAX_ENERGY) * 100;
+    }
+    public int getEnergy() {return this.entityData.get(ENERGY); }
+    public void setEnergy(int amount) {
+        this.entityData.set(ENERGY, amount);
     }
 
     private final SimpleContainer inventory = new SimpleContainer(INVENTORY_SIZE); // 9 slots (e.g., a small chest)
@@ -79,6 +184,8 @@ public class HumanoidRobot extends Mob {
     public void die(DamageSource pDamageSource) {
         super.die(pDamageSource);
 
+        this.setCanPickUpLoot(false);
+        this.canPickupLoot = false;
         if (!level.isClientSide()) {
             pythonWrapper = null;
             stopAllPythonThreads();
@@ -89,19 +196,34 @@ public class HumanoidRobot extends Mob {
 
     }
 
-//    @Override
-//    protected void registerGoals() {
-////        this.MoveToLocationGoal = new MoveToLocationGoal(this, this, new BlockPos(0, 0, 0));
-////        this.goalSelector.addGoal(0, this.MoveToLocationGoal); // Custom goal to collect nearby items
-//    }
-
-
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
         ItemStack itemStack = player.getItemInHand(hand);
 //
         if (hand == InteractionHand.MAIN_HAND) {
-            if (level.isClientSide) {
-                Imgui.FocusGuiContext(robotUI);
+            if (player.isCrouching()) {
+                 // example: 25x80 terminal
+                //try {
+                    if (!this.level.isClientSide) {
+                        ModNetwork.sendToPlayer(new TerminalSyncPacket(this.terminal.getBuffer(), this.terminal.cursorX, this.terminal.cursorY), (ServerPlayer) player);
+
+                        ModNetwork.sendToPlayer(new RobotTerminalScreenPacket( true, getId()), (ServerPlayer) player);
+                        terminal.addWatcher((ServerPlayer) player);
+                    }
+                    //Minecraft.getInstance().setScreen(new TerminalScreen(terminal));
+//                } catch (Exception e){
+//                    DigitizerPlus.LOGGER.warn("CRASHED WHEN OPENING UI");
+//                }
+
+                //Imgui.FocusGuiContext(robotUI);
+//            } else if (!level.isClientSide) {
+//                ModNetwork.sendToPlayer(new SyncRobotEnergyState(this.getId(), this.getEnergy()), (ServerPlayer) player);
+//                NetworkHooks.openScreen((ServerPlayer) player,
+//                        new SimpleMenuProvider((id, inv, p) -> new RobotMenu(id, inv, this),
+//                                Component.literal("Robot")),
+//                        buf -> buf.writeInt(this.getId()) // write entity ID here
+//                );
+//
+//            }
             }
         }
 
@@ -115,6 +237,25 @@ public class HumanoidRobot extends Mob {
                 this.spawnAtLocation(itemstack);
             }
         }
+
+        ItemStack helmet = getItemBySlot(EquipmentSlot.byTypeAndIndex(EquipmentSlot.Type.ARMOR, 1));
+        ItemStack chestplate = getItemBySlot(EquipmentSlot.byTypeAndIndex(EquipmentSlot.Type.ARMOR, 2));
+        ItemStack leggings = getItemBySlot(EquipmentSlot.byTypeAndIndex(EquipmentSlot.Type.ARMOR, 3));
+        ItemStack boots = getItemBySlot(EquipmentSlot.byTypeAndIndex(EquipmentSlot.Type.ARMOR, 0));
+
+        if (!helmet.isEmpty() && !EnchantmentHelper.hasVanishingCurse(helmet)) {
+            this.spawnAtLocation(helmet);
+        }
+        if (!chestplate.isEmpty() && !EnchantmentHelper.hasVanishingCurse(chestplate)) {
+            this.spawnAtLocation(chestplate);
+        }
+        if (!leggings.isEmpty() && !EnchantmentHelper.hasVanishingCurse(leggings)) {
+            this.spawnAtLocation(leggings);
+        }
+        if (!boots.isEmpty() && !EnchantmentHelper.hasVanishingCurse(boots  )) {
+            this.spawnAtLocation(boots);
+        }
+
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -128,8 +269,20 @@ public class HumanoidRobot extends Mob {
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
 
-        // Save the main inventory
-        tag.put("inventory", this.inventory.createTag());
+        // Save inventory
+        ListTag listTag = new ListTag();
+        for (int i = 0; i < inventory.getContainerSize(); ++i) {
+            ItemStack stack = inventory.getItem(i);
+            if (!stack.isEmpty()) {
+                CompoundTag stackTag = new CompoundTag();
+                stack.save(stackTag);
+                stackTag.putInt("Slot", i); // store slot index
+                listTag.add(stackTag);
+            }
+        }
+        tag.put("inventory", listTag);
+        tag.putInt("energyLevel", this.getEnergy());
+        tag.putBoolean("codeExecuting", this.isCodeExecuting());
 
     }
 
@@ -137,35 +290,53 @@ public class HumanoidRobot extends Mob {
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
 
-        // Clear existing contents before loading
-        this.inventory.clearContent();
+        inventory.clearContent();
 
-        // Load the main inventory
-        if (tag.contains("inventory", 9)) { // 9 = TagType.LIST
-            this.inventory.fromTag(tag.getList("inventory", 10)); // 10 = TagType.COMPOUND
+        if (tag.contains("inventory", 9)) { // 9 = ListTag
+            ListTag listTag = tag.getList("inventory", 10); // 10 = CompoundTag
+            for (int i = 0; i < listTag.size(); ++i) {
+                CompoundTag stackTag = listTag.getCompound(i);
+                int slot = stackTag.getInt("Slot"); // restore slot index
+                if (slot >= 0 && slot < inventory.getContainerSize()) {
+                    inventory.setItem(slot, ItemStack.of(stackTag));
+                }
+            }
+        }
+
+        setEnergy(tag.getInt("energyLevel"));
+
+        this.entityData.set(CODE_EXECUTING, tag.getBoolean("codeExecuting"));
+
+        DigitizerPlus.LOGGER.info("CODE EXECUTING VALUE = {}", this.isCodeExecuting());
+
+        if (isCodeExecuting() && !level().isClientSide) {
+            pendingResume = true; // mark to resume later
         }
 
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
-        this.readAdditionalSaveData(tag);
-        syncInventory();
-    }
+    public void tick() {
+        super.tick();
 
-    public void syncInventory() {
-        if (!level.isClientSide) {
-            HashMap<String, Integer> extraData = new HashMap<>();
-            extraData.put("entityID", this.getId());
+        // Queue script exectuion if the bot was running a script before shutdown of the last world instance
+        if (!level().isClientSide && pendingResume && Minecraft.getInstance().getConnection() != null) {
+            pendingResume = false;
 
-            ModNetwork.sendToAllClients(new SyncRobotPacket(extraData, this.getItems()));
+            DigitizerPlus.LOGGER.warn("RESUMING SCRIPT for {}", getUUID());
+            Path recent = ComputerManager.getRecentFile(getUUID().toString()).toAbsolutePath();
+            try {
+                String code = Files.readString(recent);
+                // Send script back to your script executor
+                ModNetwork.sendToServer(new JepServerPacket(getId(), code));
+            } catch (IOException e) {
+                DigitizerPlus.LOGGER.error("Failed to read script for {}", getUUID(), e);
+            }
         }
     }
 
-    public Container getInventory() {
-        return this.inventory;
-    }
+
+    public Container getInventory() { return this.inventory;}
     public List<ItemStack> getItems() {
         List<ItemStack> items = new ArrayList<>(inventory.getContainerSize());
         for (int i = 0; i < inventory.getContainerSize(); i++) {
@@ -222,7 +393,35 @@ public class HumanoidRobot extends Mob {
         }
 
     }
+    public RobotPythonRunner getDefaultThread() {
+        if (!level.isClientSide) {
+            RobotPythonRunner runner = pythonThreads.entrySet().stream().toList().get(0).getValue();
+            return runner;
+        }
+        return null;
+    }
 
+    /* Required for threaded use */
+    @Nullable
+    public BlockEntity getBlockEntity(BlockPos blockPos) {
+        CompletableFuture<BlockEntity> future = new CompletableFuture<>();
+
+        level.getServer().execute(() -> {
+            BlockEntity blockEntity = level.getBlockEntity(blockPos);
+            if (blockEntity != null) {
+                future.complete(blockEntity);
+            }
+
+        });
+
+        try {
+            // Wait up to 200ms for the result
+            return future.get(200, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException | CommandLine.ExecutionException | TimeoutException | ExecutionException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
 
 
     // ----------
@@ -238,7 +437,7 @@ public class HumanoidRobot extends Mob {
             // Get the entity's path navigation system
             PathNavigation navigation = this.getNavigation();
             // Create a path to the target position
-            Path path = navigation.createPath(targetPos, 0); // 0 is the accuracy (0 = exact)
+            net.minecraft.world.level.pathfinder.Path path = navigation.createPath(targetPos, 0); // 0 is the accuracy (0 = exact)
 
             if (path != null) {
                 // Start moving along the path
@@ -294,20 +493,26 @@ public class HumanoidRobot extends Mob {
         this.hurtMarked = true;
 
     }
-    public void facePosition(double x, double y, double z) {
-        Entity entity = (Entity) this;
-        if (entity.level().isClientSide) return;
 
-        double dX = x - entity.getX();
-        double dY = y - (entity.getY() + entity.getEyeHeight());
-        double dZ = z - entity.getZ();
+    public Vec3 getApproximateFacingBlock(double distance) {
+        Vec3 eyePos = this.getEyePosition(1.0F);
+        Vec3 look = this.getViewVector(1.0F);
 
-        double horizontalDistance = Math.sqrt(dX * dX + dZ * dZ);
+        Vec3 target = eyePos.add(look.scale(distance));
+        return new Vec3(target.x, target.y, target.z);
+    }
 
-        float yaw = (float)(Math.atan2(dZ, dX) * (180D / Math.PI)) - 90.0F;
-        float pitch = (float)-(Math.atan2(dY, horizontalDistance) * (180D / Math.PI));
+    public void lookAtPosition(Vec3 pos) {
+        if (!this.level().isClientSide()) {
+            Vec3 eyePos = this.getEyePosition(1.0F);
 
-        setEntityRotation(yaw, pitch);
+            // If target is below the eyes, correct the Y to avoid nodding
+            if (pos.y < eyePos.y) {
+                pos = new Vec3(pos.x, eyePos.y - 0.1, pos.z);
+            }
+
+            this.lookAt(EntityAnchorArgument.Anchor.EYES, pos);
+        }
     }
 
     public HitResult getLookingRayResult() {
@@ -487,9 +692,49 @@ public class HumanoidRobot extends Mob {
         return visibleBlocks;
     }
 
+    public void dropItemEntity(ItemStack stack) {
+        double d0 = this.getEyeY() - (double)0.3F;
+
+        if (!this.level().isClientSide) {
+            ItemEntity itemEntity = new ItemEntity(this.level, this.position().x, d0, this.position().z, stack);
+            itemEntity.setPickUpDelay(40);
+
+
+            itemEntity.setThrower(this.getUUID());
+
+            float f7 = 0.3F;
+            float f8 = Mth.sin(this.getXRot() * ((float) Math.PI / 180F));
+            float f2 = Mth.cos(this.getXRot() * ((float) Math.PI / 180F));
+            float f3 = Mth.sin(this.getYRot() * ((float) Math.PI / 180F));
+            float f4 = Mth.cos(this.getYRot() * ((float) Math.PI / 180F));
+            float f5 = this.random.nextFloat() * ((float) Math.PI * 2F);
+            float f6 = 0.02F * this.random.nextFloat();
+            itemEntity.setDeltaMovement((double) (-f3 * f2 * 0.3F) + Math.cos((double) f5) * (double) f6, (double) (-f8 * 0.3F + 0.1F + (this.random.nextFloat() - this.random.nextFloat()) * 0.1F), (double) (f4 * f2 * 0.3F) + Math.sin((double) f5) * (double) f6);
+            this.level.addFreshEntity(itemEntity);
+        }
+
+
+//        itemEntity.setDeltaMovement(lookVec.scale(.2));
+    }
+
+    public boolean withinInteractionRange(BlockPos blockPos) {
+        return !(position().distanceTo(blockPos.getCenter()) > INTERACT_RANGE);
+    }
+    public boolean withinInteractionRange(Vec3 pos) {
+        return position().distanceTo(pos) > INTERACT_RANGE;
+    }
+
    @Override
     public boolean isCrouching() {
         return this.getPose() == Pose.CROUCHING || this.isShiftKeyDown();
+    }
+
+    public boolean isCodeExecuting() {
+        return this.entityData.get(CODE_EXECUTING);
+    }
+
+    public void setCodeExecuting(boolean value) {
+        this.entityData.set(CODE_EXECUTING, value);
     }
 
 }

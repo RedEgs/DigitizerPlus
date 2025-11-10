@@ -1,14 +1,13 @@
 package net.redegs.digitizerplus.network.packets;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.Level;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.server.ServerLifecycleHooks;
 import net.redegs.digitizerplus.entity.HumanoidRobot;
+import net.redegs.digitizerplus.network.ModNetwork;
 import net.redegs.digitizerplus.python.RobotPythonRunner;
 
 import java.util.Objects;
@@ -52,8 +51,14 @@ public class JepServerPacket {
                     if (Objects.equals(packet.code, "STOP")){
                         try {
                             robot.stopAllPythonThreads();
-                            System.out.println("Stopped runnign thread");
+                            //ModNetwork.sendToAllClients(new SyncRobotCodeState(packet.robot, false));
+
+                            robot.setCodeExecuting(false);
+                            System.out.println("Stopped running thread");
                         } catch (Exception e){
+                            //ModNetwork.sendToAllClients(new SyncRobotCodeState(packet.robot, false));
+
+                            robot.setCodeExecuting(false);
                             System.out.println("Error when stopping python thread.");
                             System.out.println(e);
                         }
@@ -63,6 +68,10 @@ public class JepServerPacket {
 
                         thread.start();
                         robot.pythonThreads.put(thread, runner);
+                        robot.setCodeExecuting(true);
+
+
+                        //ModNetwork.sendToAllClients(new SyncRobotCodeState(packet.robot, true));
                     }
                 }
 

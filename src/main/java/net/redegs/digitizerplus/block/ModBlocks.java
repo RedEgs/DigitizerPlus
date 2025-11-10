@@ -33,6 +33,8 @@ public class ModBlocks {
     public static final RegistryObject<Block> STORAGE_BLOCK = registerBlock("storage_block",
             () -> new StorageBlock(BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK)));
 
+    public static final RegistryObject<Block> COMPUTER_BLOCK = registerBlock("computer_block",
+            () -> new ComputerBlock(BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK)));
 
 
     private static <T extends Block> RegistryObject<Item> registerBlockItem(String name, RegistryObject<T> block) {

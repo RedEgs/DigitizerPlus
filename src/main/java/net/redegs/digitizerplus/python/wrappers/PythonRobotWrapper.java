@@ -1,49 +1,39 @@
-package net.redegs.digitizerplus.python;
+package net.redegs.digitizerplus.python.wrappers;
 
-import jep.SharedInterpreter;
-import jep.python.PyObject;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.Registry;
 import net.minecraft.core.Vec3i;
-import net.minecraft.world.Container;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.Pose;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.items.IItemHandler;
 import net.redegs.digitizerplus.entity.HumanoidRobot;
-import net.redegs.digitizerplus.misc.Python;
+import net.redegs.digitizerplus.python.RobotPythonRunner;
 import net.redegs.digitizerplus.python.datatypes.PythonBlock;
 import net.redegs.digitizerplus.python.datatypes.PythonEntity;
 import net.redegs.digitizerplus.python.datatypes.PythonInventory;
-import org.joml.Vector3i;
+import net.redegs.digitizerplus.util.ContainerUtils;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
-import static net.minecraft.commands.arguments.coordinates.BlockPosArgument.getBlockPos;
-
-public class RobotPythonWrapper {
+public class PythonRobotWrapper {
     private final HumanoidRobot robotParent;
 
-    public RobotPythonWrapper(HumanoidRobot robotParent) {
+    public PythonRobotWrapper(HumanoidRobot robotParent) {
         this.robotParent = robotParent;
     }
 
@@ -72,6 +62,9 @@ public class RobotPythonWrapper {
                 return false;
             }
         }
+        public boolean navigateTo(Vec3 pos) throws Exception {
+            return navigateTo((int) pos.x, (int) pos.y, (int) pos.z);
+        }
         public void stopNavigating() {
             try {
                 robotParent.getNavigation().stop();
@@ -84,6 +77,7 @@ public class RobotPythonWrapper {
         public void jump() {
             if (robotParent.onGround()) {
                 robotParent.jump();
+                robotParent.consumeEnergy(25);
             }
         }
         public void forward() {
@@ -92,8 +86,9 @@ public class RobotPythonWrapper {
             Vec3 targetPos = currentPos.add(look.x, 0, look.z); // 1 block forward, horizontal only
 
             robotParent.moveEntityToLocation((int) targetPos.x, (int) targetPos.y, (int) targetPos.z, 1.0);
-
             robotParent.hurtMarked = true;
+
+            robotParent.consumeEnergy(10);
         }
         public void backward() {
             Vec3 look = robotParent.getLookAngle().normalize().reverse();
@@ -103,11 +98,23 @@ public class RobotPythonWrapper {
             robotParent.getNavigation().moveTo(targetPos.x, targetPos.y, targetPos.z, 1.0); // 1.0 is movement speed
 
             robotParent.hurtMarked = true;
+            robotParent.consumeEnergy(10);
         }
 
         public void lookAtPosition(int x, int y, int z) {
-            robotParent.facePosition((double) x,(double) y,(double) z);
+            Vec3 pos = new Vec3(x, y ,z);
+            robotParent.lookAtPosition(pos);
         }
+        public void lookAtPosition(Vec3 position) {
+            robotParent.lookAtPosition(position);
+        }
+        public void lookAtEntity(PythonEntity entity) {
+            Vec3 pos = entity.getPosition();
+            if (robotParent.isInVisionCone(new BlockPos((int) pos.x, (int) pos.y, (int) pos.z))) {
+                robotParent.lookAtPosition(pos);
+            }
+        }
+
         public void lookAt(float yaw, float pitch) {
             robotParent.setEntityRotation(yaw, pitch);
         }
@@ -130,12 +137,14 @@ public class RobotPythonWrapper {
 
         public void crouch() {
             robotParent.crouch();
+            robotParent.consumeEnergy(10);
         }
         public void uncrouch() {
             robotParent.standup();
         }
         public void standup() {
             robotParent.standup();
+            robotParent.consumeEnergy(10);
         }
 
     }
@@ -150,6 +159,9 @@ public class RobotPythonWrapper {
         }
         public float getDistanceToPosition(int x, int y, int z) {
             return (float) robotParent.position().distanceTo(new Vec3(x, y, z));
+        }
+        public float getDistanceToPosition(Vec3 pos) {
+            return getDistanceToPosition((int) pos.x, (int) pos.y,  (int) pos.z);
         }
 
         public String getDimension() {
@@ -191,12 +203,15 @@ public class RobotPythonWrapper {
                 return Direction.EAST.name();
             }
         }
-        public Object getFacingVector() {
+        public Vec3 getFacingVector() {
             float yawRadians = (robotParent.getYRot() - 90) * ((float)Math.PI / 180);
 
             // Return normalized vector (x, 0, z)
             Vec3 facingVec = new Vec3(Math.cos(yawRadians), 0, Math.sin(yawRadians)).normalize();
-            return new Object[] {facingVec.x, facingVec.y, facingVec.z};
+            return facingVec;
+        }
+        public Vec3 getFacingCoords() {
+            return robotParent.getApproximateFacingBlock(99999D).normalize();
         }
 
         public Object getLookingPosition() {
@@ -252,32 +267,145 @@ public class RobotPythonWrapper {
             return visiblePyBlocks;
         }
 
+
         public boolean hasInventory(PythonBlock block) {
-            if (!robotParent.level().isClientSide) {
+            BlockPos blockPos = block.getBlockPosition();
+            Level level = robotParent.level();
 
-                BlockPos blockPos = block.getBlockPosition();
-
-                BlockEntity blockEntity = robotParent.level().getBlockEntity(blockPos);
-                BlockState blockState = robotParent.level().getBlockState(blockPos);
-                System.out.println(blockEntity);
-                System.out.println(blockState);
-                if (blockEntity != null) {
-                    LazyOptional<?> itemHandler = blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER);
-                    return itemHandler.isPresent();
-                }
-
-                //return false;
+            BlockEntity blockEntity = robotParent.getBlockEntity(blockPos);
+            if (blockEntity != null) {
+                LazyOptional<?> itemHandler = blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER);
+                return itemHandler.isPresent();
             }
+
             return false;
         }
     }
 
     public class Logistic {
-        public void shouldPickupLoot(boolean dropPickup) { robotParent.canPickupLoot = dropPickup; }
-        public boolean willPickupLoot() { return robotParent.canPickupLoot; }
+        public void pickupLoot(boolean dropPickup) { robotParent.canPickupLoot = dropPickup; }
+        public boolean canPickupLoot() { return robotParent.canPickupLoot; }
+        public PythonInventory getInventory() {
+            /* Gets the robot's inventory */
+            return new PythonInventory(robotParent.getInventory(), robotParent);
+        }
 
-        public Object getInventory() { return new PythonInventory(robotParent.getInventory()); }
+        @Nullable
+        public PythonInventory getBlockInventorySided(PythonBlock block, @Nullable String side) throws Exception {
+            /*
+                Returns a copy of a block's container content, from that side (can be null).
+                The inventory reference can be changed but it won't affect the real container reference
+            */
+            RobotPythonRunner.setJepAccess(true);
+            if (!robotParent.withinInteractionRange(block.getBlockPosition())) {
+                class InteractionOutOfRangeException extends Exception {
+                    public InteractionOutOfRangeException(String m) {
+                        super(m);
+                    }
+                }
+                double range = robotParent.position().distanceTo(block.getBlockPosition().getCenter());
+                RobotPythonRunner.setJepAccess(false);
+                throw new InteractionOutOfRangeException("Block is " + range + " blocks away, robot's max range is " + robotParent.INTERACT_RANGE + " blocks.");
+            }
 
+            BlockEntity blockEntity = robotParent.getBlockEntity(block.getBlockPosition());
+            if (blockEntity != null) {
+                LazyOptional<?> itemHandler = blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER);
+                if (itemHandler.isPresent()) {
+                    LazyOptional<IItemHandler> capability = blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER, null);
+                    Optional<IItemHandler> opt = capability.resolve();
+
+                    AtomicReference<PythonInventory> inventory = new AtomicReference<>();
+                    opt.ifPresent(handler -> {
+                        inventory.set(new PythonInventory(handler, blockEntity, robotParent));
+                    });
+
+                    RobotPythonRunner.setJepAccess(false);
+                    return inventory.get();
+                }
+
+            }
+
+            RobotPythonRunner.setJepAccess(false);
+            return null;
+        }
+        public PythonInventory getBlockInventory(PythonBlock block) throws Exception {
+            return getBlockInventorySided(block, null);
+        }
+
+        public void dropSlot(int slot) {
+            if (!robotParent.level().isClientSide) {
+                ItemStack stack = robotParent.getInventory().getItem(slot);
+                if (!stack.isEmpty()) {
+                    robotParent.dropItemEntity(stack.copy());
+                    robotParent.getInventory().setItem(slot, ItemStack.EMPTY);
+                }
+            }
+        }
+        public void dropItem(int slot) {
+            if (!robotParent.level().isClientSide) {
+                ItemStack stack = robotParent.getInventory().getItem(slot);
+                if (!stack.isEmpty() && stack.getCount() > 0) {
+
+                    robotParent.dropItemEntity(stack.split(1).copy());
+                    //robotParent.getInventory().setItem(slot, ItemStack.EMPTY);
+                }
+            }
+        }
+        public void dropAmount(int slot, int amount) {
+            if (!robotParent.level().isClientSide) {
+                ItemStack stack = robotParent.getInventory().getItem(slot);
+                if (!stack.isEmpty() && stack.getCount() >= amount) {
+
+                    robotParent.dropItemEntity(stack.split(amount).copy());
+                    //robotParent.getInventory().setItem(slot, ItemStack.EMPTY);
+                }
+            }
+        }
+
+        public void equipSlot(int slot) { equipSlot(slot, false); }
+
+        public void equipSlot(int slot, boolean offhand) {
+            if (!robotParent.level().isClientSide) {
+                ItemStack stack = robotParent.getInventory().getItem(slot);
+                if (!stack.isEmpty()) {
+                    if (!offhand && !robotParent.getMainHandItem().isEmpty()) {
+                        robotParent.getInventory().setItem(slot, robotParent.getMainHandItem().copyAndClear());
+                    } else if (offhand && !robotParent.getOffhandItem().isEmpty()) {
+                        robotParent.getInventory().setItem(slot, robotParent.getOffhandItem().copyAndClear());
+                    }
+
+                    if (offhand) {
+                        robotParent.setItemInHand(InteractionHand.OFF_HAND, stack.copyAndClear());
+                    } else {
+                        robotParent.equipItemIfPossible(stack.copyAndClear());
+                    }
+
+
+                }
+            }
+        }
+        public void unequip() {
+            unequip(false);
+        }
+        public void unequip(boolean offhand) {
+            if (!robotParent.level().isClientSide) {
+                ItemStack stack;
+                if (offhand && !robotParent.getOffhandItem().isEmpty()) {
+                    stack = robotParent.getOffhandItem();
+                } else if (!offhand && !robotParent.getMainHandItem().isEmpty()) {
+                    stack = robotParent.getMainHandItem();
+                } else {
+                    return;
+                }
+
+                int nextSlot = ContainerUtils.FindNextEmptySlot(robotParent.getInventory());
+                if (nextSlot > -1) {
+                    robotParent.getInventory().setItem(nextSlot, stack.copyAndClear());
+                }
+            }
+
+        }
 
     }
 
@@ -292,6 +420,15 @@ public class RobotPythonWrapper {
         public boolean isNavigating () { return robotParent.getNavigation().isInProgress(); }
         public boolean isMoving () { return robotParent.getDeltaMovement().horizontalDistanceSqr() > 0.001 * 0.001; }
 
+        public String getUUID() {
+            return robotParent.getUUID().toString();
+        }
+
+        public int getEnergy() { return robotParent.getEnergy(); }
+        public float getEnergyPercentage() { return robotParent.getEnergyPercentage(); }
+
+        public void addEnergy(int amount) { robotParent.addEnergy(amount);}
+        public void removeEnergy(int amount) {robotParent.removeEnergy(amount);}
 
     }
 

@@ -23,6 +23,11 @@ public class ModBlockEntities {
                     BlockEntityType.Builder.of(StorageBlockEntity::new,
                             ModBlocks.STORAGE_BLOCK.get()).build(null));
 
+    public static final RegistryObject<BlockEntityType<ComputerEntity>> COMPUTER_BE =
+            BLOCK_ENTITIES.register("computer_be", () ->
+                    BlockEntityType.Builder.of(ComputerEntity::new,
+                            ModBlocks.COMPUTER_BLOCK.get()).build(null));
+
 
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);
