@@ -8,6 +8,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 import net.redegs.digitizerplus.DigitizerPlus;
 import net.redegs.digitizerplus.network.packets.JepEditorPacket;
 import net.redegs.digitizerplus.network.packets.JepServerPacket;
+import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalClipboardPacket;
 import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalKeypressPacket;
 import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalScreenPacket;
 import net.redegs.digitizerplus.network.packets.computer.terminal.robot.RobotTerminalKeypressPacket;
@@ -74,6 +75,13 @@ public class ModNetwork {
                 RobotTerminalScreenPacket::encode,
                 RobotTerminalScreenPacket::decode,
                 RobotTerminalScreenPacket::handle
+        );
+
+        INSTANCE.registerMessage(packetId++,
+                TerminalClipboardPacket.class,
+                TerminalClipboardPacket::encode,
+                TerminalClipboardPacket::decode,
+                TerminalClipboardPacket::handle
         );
 
         //INSTANCE.registerMessage(packetId)

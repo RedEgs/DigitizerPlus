@@ -3,7 +3,7 @@ package net.redegs.digitizerplus.util;
 import org.lwjgl.glfw.GLFW;
 
 public class KeyUtils {
-    public static char convertKeyToChar(int key, boolean shift, boolean capsLock) {
+    public static char KeyToChar(int key, boolean shift, boolean capsLock) {
         // Handle letters A-Z
         if (key >= GLFW.GLFW_KEY_A && key <= GLFW.GLFW_KEY_Z) {
             char base = (char) ('a' + (key - GLFW.GLFW_KEY_A));
@@ -79,5 +79,37 @@ public class KeyUtils {
                  GLFW.GLFW_KEY_F9, GLFW.GLFW_KEY_F10, GLFW.GLFW_KEY_F11, GLFW.GLFW_KEY_F12 -> true;
             default -> false; // Assume non-letter unless explicitly a letter
         };
+    }
+
+    public static int CharToKey(char c) {
+        // Handle uppercase letters
+        if (c >= 'A' && c <= 'Z') {
+            return GLFW.GLFW_KEY_A + (c - 'A');
+        }
+        // Handle lowercase letters
+        if (c >= 'a' && c <= 'z') {
+            return GLFW.GLFW_KEY_A + (c - 'a');
+        }
+        // Handle digits
+        if (c >= '0' && c <= '9') {
+            return GLFW.GLFW_KEY_0 + (c - '0');
+        }
+
+        // Handle punctuation and symbols
+        switch (c) {
+            case ' ': return GLFW.GLFW_KEY_SPACE;
+            case '-': return GLFW.GLFW_KEY_MINUS;
+            case '=': return GLFW.GLFW_KEY_EQUAL;
+            case '[': return GLFW.GLFW_KEY_LEFT_BRACKET;
+            case ']': return GLFW.GLFW_KEY_RIGHT_BRACKET;
+            case '\\': return GLFW.GLFW_KEY_BACKSLASH;
+            case ';': return GLFW.GLFW_KEY_SEMICOLON;
+            case '\'': return GLFW.GLFW_KEY_APOSTROPHE;
+            case ',': return GLFW.GLFW_KEY_COMMA;
+            case '.': return GLFW.GLFW_KEY_PERIOD;
+            case '/': return GLFW.GLFW_KEY_SLASH;
+            case '`': return GLFW.GLFW_KEY_GRAVE_ACCENT;
+            default: return -1;
+        }
     }
 }

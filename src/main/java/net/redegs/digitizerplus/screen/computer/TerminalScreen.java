@@ -80,56 +80,37 @@ public class TerminalScreen extends Screen {
     }
 
     @Override
-    public boolean charTyped(char c, int modifiers) {
-        // Only send printable ASCII chars
-        if (c >= 32 && c <= 126) {
-            boolean up = false; // typed characters are "pressed" events
-            if (terminal.blockEntityPos == null) {
-                ModNetwork.sendToServer(new RobotTerminalKeypressPacket(c, up, ((RobotTerminal) terminal).robot.getId()));
-            } else {
-                ModNetwork.sendToServer(new TerminalKeypressPacket(c, 3, terminal.blockEntityPos));
-            }
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        // Send key down event
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            // Close the GUI manually
+            assert this.minecraft != null;
+            this.minecraft.setScreen(null);
             return true;
         }
-        return false;
-    }
 
-    @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // Ignore regular text characters (handled in charTyped)
-        if (!KeyUtils.isNonLetterKey(keyCode)) {
-            return false;
+        if (terminal.blockEntityPos != null) {
+            ModNetwork.sendToServer(new TerminalKeypressPacket(keyCode, 0, modifiers, terminal.blockEntityPos));
         }
-
-        char keyChar = (char) keyCode; // You already use this pattern
-        boolean up = false; // pressed (not released)
-
-        if (terminal.blockEntityPos == null) {
-            ModNetwork.sendToServer(new RobotTerminalKeypressPacket(keyChar, up, ((RobotTerminal) terminal).robot.getId()));
-        } else {
-            ModNetwork.sendToServer(new TerminalKeypressPacket(keyChar, 0, terminal.blockEntityPos));
-        }
-
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return true;
     }
 
     @Override
     public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
-        // Ignore normal printable chars
-        if (!KeyUtils.isNonLetterKey(keyCode)) {
-            return false;
+        // Send key up event
+        if (terminal.blockEntityPos != null) {
+            ModNetwork.sendToServer(new TerminalKeypressPacket(keyCode, 1, modifiers, terminal.blockEntityPos));
         }
+        return true;
+    }
 
-        char keyChar = (char) keyCode;
-        boolean up = true; // released
-
-        if (terminal.blockEntityPos == null) {
-            ModNetwork.sendToServer(new RobotTerminalKeypressPacket(keyChar, up, ((RobotTerminal) terminal).robot.getId()));
-        } else {
-            ModNetwork.sendToServer(new TerminalKeypressPacket(keyChar, 1, terminal.blockEntityPos));
+    @Override
+    public boolean charTyped(char c, int modifiers) {
+        if (terminal.blockEntityPos != null) {
+            // Send typed (printable) event
+            ModNetwork.sendToServer(new TerminalKeypressPacket(c, 2, modifiers, terminal.blockEntityPos));
         }
-
-        return super.keyReleased(keyCode, scanCode, modifiers);
+        return true;
     }
 
     @Override

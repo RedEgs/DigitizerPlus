@@ -6,6 +6,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -23,6 +24,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -35,7 +37,9 @@ import net.redegs.digitizerplus.computer.ComputerManager;
 import net.redegs.digitizerplus.python.PythonRunner;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class ComputerBlock extends BaseEntityBlock  {
     public static final VoxelShape SHAPE = Block.box(0, 0, 0, 16, 16, 16);
@@ -128,5 +132,38 @@ public class ComputerBlock extends BaseEntityBlock  {
 
     }
 
- 
+    @Override
+    public List<ItemStack> getDrops(BlockState pState, LootParams.Builder pParams) {
+        List<ItemStack> drops = new ArrayList<>();
+        BlockEntity be = pParams.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
+        ItemStack itemStack = new ItemStack(this.asItem());
+
+        if (be instanceof ComputerEntity) {
+            CompoundTag tag = new CompoundTag();
+            itemStack.getOrCreateTag().putUUID("ComputerID", ((ComputerEntity) be).getComputerID());
+        }
+
+        drops.add(itemStack);
+        return drops;
+    }
+
+    @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+
+        if (!level.isClientSide) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof ComputerEntity computerBE && stack.hasTag()) {
+                CompoundTag tag = stack.getTag();
+
+                if (tag.contains("ComputerID")) {
+                    UUID id = tag.getUUID("ComputerID");
+                    DigitizerPlus.LOGGER.info("MARKING AS PLACED = {}", id);
+                    computerBE.markAsPlaced(id);
+
+                }
+
+            }
+        }
+    }
 }

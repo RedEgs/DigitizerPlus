@@ -1,19 +1,18 @@
 package net.redegs.digitizerplus.computer.terminal;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.redegs.digitizerplus.DigitizerPlus;
-import net.redegs.digitizerplus.block.entity.ComputerEntity;
 import net.redegs.digitizerplus.computer.terminal.program.DefaultProgram;
-import net.redegs.digitizerplus.computer.terminal.program.EchoProgram;
 import net.redegs.digitizerplus.computer.terminal.program.TerminalProgram;
 import net.redegs.digitizerplus.network.ModNetwork;
+import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalClipboardPacket;
 import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalSyncPacket;
-import net.redegs.digitizerplus.util.KeyUtils;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 public class Terminal {
     private Cell[][] buffer;
@@ -30,6 +29,10 @@ public class Terminal {
     private int lastInputX = 0, lastInputY = 0;
 
     public Set<Integer> keysDown;
+    public ServerPlayer controlOwner;
+
+    private String clipboard;
+    private CompletableFuture<String> clipboardFuture;
 
     private TerminalProgram currentProgram;
     private ArrayList<ServerPlayer> watchers;
@@ -96,51 +99,43 @@ public class Terminal {
         }
     }
 
-    public void keyReleased(int key, boolean typed) {
+    public void keyPressed(int key, int modifiers, boolean typed) {
+        keysDown.add(key);
+        onKeyDown(key);
 
-        this.onKeyUp(key);
-        this.keysDown.remove(key);
+        boolean ctrl = (modifiers & GLFW.GLFW_MOD_CONTROL) != 0;
+        boolean shift = (modifiers & GLFW.GLFW_MOD_SHIFT) != 0;
+
+        if (isAcceptingInput()) {
+            if (ctrl && key == GLFW.GLFW_KEY_V) { controlV(); return; }
+            if (ctrl && key == GLFW.GLFW_KEY_C) { controlC(); return; }
+            if (ctrl && key == GLFW.GLFW_KEY_S) { controlS(); return; }
+
+            switch (key) {
+                case GLFW.GLFW_KEY_BACKSPACE -> backspace();
+                case GLFW.GLFW_KEY_ENTER -> newline(false);
+                case GLFW.GLFW_KEY_TAB -> tab();
+                case GLFW.GLFW_KEY_LEFT -> leftKey();
+                case GLFW.GLFW_KEY_RIGHT -> rightKey();
+                case GLFW.GLFW_KEY_UP -> upKey();
+                case GLFW.GLFW_KEY_DOWN -> downKey();
+            }
+        }
     }
 
-    public void keyPressed(int key, boolean typed) {
-        boolean breakInput = false;
+    public void keyReleased(int key, int modifiers) {
+        onKeyUp(key);
+        keysDown.remove(key);
+    }
 
-        if (!typed) {
-            this.keysDown.add(key);
-        }
-        this.onKeyDown(key);
+    public void keyTyped(char c, int modifiers) {
+        boolean ctrl = (modifiers & GLFW.GLFW_MOD_CONTROL) != 0;
+        boolean shift = (modifiers & GLFW.GLFW_MOD_SHIFT) != 0;
 
+        if (ctrl) return; // ignore control shortcuts
 
-        if (keysDown.contains(GLFW.GLFW_KEY_LEFT_SHIFT) || keysDown.contains(GLFW.GLFW_KEY_LEFT_CONTROL)) {
-            breakInput = true;
-        }
-        if (isAcceptingInput()) {
-
-            if (key == GLFW.GLFW_KEY_BACKSPACE) backspace();
-            else if (key == GLFW.GLFW_KEY_ENTER) newline(false);
-            else if (key == GLFW.GLFW_KEY_TAB) tab();
-            else if (key == GLFW.GLFW_KEY_LEFT) leftKey();
-            else if (key == GLFW.GLFW_KEY_RIGHT) rightKey();
-            else if (key == GLFW.GLFW_KEY_UP) upKey();
-            else if (key == GLFW.GLFW_KEY_DOWN) downKey();
-            else if (key == GLFW.GLFW_KEY_LEFT_CONTROL) leftControl();
-            else if (key == GLFW.GLFW_KEY_LEFT_SHIFT) leftShift();
-            else if (breakInput) return;
-            else insertChar( (char) key, false);
-        } else {
-
-            if (key == GLFW.GLFW_KEY_BACKSPACE) backspace();
-            else if (key == GLFW.GLFW_KEY_ENTER) newline(false);
-            else if (key == GLFW.GLFW_KEY_TAB) tab();
-            else if (key == GLFW.GLFW_KEY_LEFT) leftKey();
-            else if (key == GLFW.GLFW_KEY_RIGHT) rightKey();
-            else if (key == GLFW.GLFW_KEY_UP) upKey();
-            else if (key == GLFW.GLFW_KEY_DOWN) downKey();
-            else if (key == GLFW.GLFW_KEY_LEFT_CONTROL) leftControl();
-            else if (key == GLFW.GLFW_KEY_LEFT_SHIFT) leftShift();
-
-        }
-
+        // Normal character input
+        insertChar(c, false);
     }
 
     public void onKeyDown(int key) {
@@ -453,6 +448,43 @@ public class Terminal {
     public void setInputLine(int line) {
         this.inputLine = line;
     }
+
+    public void setClipboard(String text) {
+        this.clipboard = text;
+    }
+
+    public String getClipboard() { return clipboard; }
+
+    public String requestClipboard(ServerPlayer player) {
+        // Requests the clipboard from the client
+        clipboardFuture = new CompletableFuture<>();
+        // send clipboard request to client
+        ModNetwork.sendToPlayer(new TerminalClipboardPacket(blockEntityPos, true), player);
+
+        clipboardFuture
+            .orTimeout(2, TimeUnit.SECONDS)
+            .thenAccept(clipboard -> {
+                if (clipboard == null || clipboard.isEmpty()) {
+                    System.out.println("Clipboard empty or timed out.");
+                } else {
+                    System.out.println("Clipboard: " + clipboard);
+                }
+            })
+            .exceptionally(ex -> {
+                System.out.println("Clipboard request failed: " + ex);
+                return null;
+            });
+        return clipboard;
+    }
+
+    public void clipboardReceived(String clipboard) {
+        if (clipboardFuture != null && !clipboardFuture.isDone()) {
+            clipboardFuture.complete(clipboard); // releases the wait above
+        }
+    }
+
+
+
 
     public void stopProgram() {
         if (currentProgram != null) {

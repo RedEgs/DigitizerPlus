@@ -29,6 +29,7 @@ import java.util.UUID;
 public class ComputerEntity extends BlockEntity {
     public Terminal terminal;
     private UUID computerID;
+    private boolean freshlyPlaced = false;
     private boolean computerInitialized = false;
 
     public HashMap<Thread, PythonRunner> pythonThreads;
@@ -89,7 +90,9 @@ public class ComputerEntity extends BlockEntity {
     public void onLoad() {
         super.onLoad();
         DigitizerPlus.LOGGER.info("CALLING ON LOAD = {}", computerID);
-        terminal = new Terminal(getBlockPos(), computerID, 12, 42);
+        if (!this.freshlyPlaced) terminal = new Terminal(getBlockPos(), computerID, 12, 42);
+
+
     }
 
     @Override
@@ -143,6 +146,17 @@ public class ComputerEntity extends BlockEntity {
             if (level != null && !level.isClientSide) {
                 level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
             }
+        }
+    }
+
+    public void markAsPlaced(UUID uuid) {
+        freshlyPlaced = true; computerInitialized = true;
+        computerID = uuid;
+        ComputerManager.putComputerEntity(computerID, this);
+        terminal = new Terminal(getBlockPos(), computerID, 12, 42);
+        setChanged();
+        if (level != null && !level.isClientSide) {
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
         }
     }
 

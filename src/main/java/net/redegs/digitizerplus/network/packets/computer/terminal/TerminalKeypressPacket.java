@@ -6,6 +6,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.server.ServerLifecycleHooks;
 import net.redegs.digitizerplus.DigitizerPlus;
@@ -18,60 +19,55 @@ import org.lwjgl.glfw.GLFW;
 import java.util.function.Supplier;
 
 public class TerminalKeypressPacket {
-    private final char key; // single char pressed
-    private final int type; // whether key is down or up
-    public BlockPos blockEntityPos;
+    private final int keyCode;     // GLFW key code or typed char
+    private final int type;        // 0 = down, 1 = up, 2 = typed
+    private final int modifiers;   // GLFW modifier bitmask
+    private final BlockPos blockEntityPos;
 
-    public TerminalKeypressPacket(char key, int type, BlockPos blockEntityPos) {
-        this.key = key;
+    public TerminalKeypressPacket(int keyCode, int type, int modifiers, BlockPos blockEntityPos) {
+        this.keyCode = keyCode;
         this.type = type;
+        this.modifiers = modifiers;
         this.blockEntityPos = blockEntityPos;
     }
 
-    public char getKey() {
-        return key;
-    }
+    public int getKey() { return keyCode; }
+    public int getType() { return type; }
+    public int getModifiers() { return modifiers; }
 
-    // Encode
     public static void encode(TerminalKeypressPacket pkt, FriendlyByteBuf buf) {
-        buf.writeChar(pkt.key);
+        buf.writeInt(pkt.keyCode);
         buf.writeInt(pkt.type);
+        buf.writeInt(pkt.modifiers);
         buf.writeBlockPos(pkt.blockEntityPos);
     }
 
-    // Decode
     public static TerminalKeypressPacket decode(FriendlyByteBuf buf) {
-        return new TerminalKeypressPacket(buf.readChar(), buf.readInt(),buf.readBlockPos());
+        return new TerminalKeypressPacket(buf.readInt(), buf.readInt(), buf.readInt(), buf.readBlockPos());
     }
 
-    // Handle (runs on server!)
     public static void handle(TerminalKeypressPacket pkt, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context context = ctx.get();
         ctx.get().enqueueWork(() -> {
-            if (context.getDirection().getReceptionSide().isServer()) {
-                ServerPlayer player = context.getSender(); // server-side player
-                if (player == null) return;
+            if (!context.getDirection().getReceptionSide().isServer()) return;
 
-                // Get the block entity from the SERVER world
-                ComputerEntity entity = (ComputerEntity) player.level().getBlockEntity(pkt.blockEntityPos);
-                if (entity == null) return;
+            ServerPlayer player = context.getSender();
+            if (player == null) return;
 
-                Terminal term = entity.terminal;
+            BlockEntity be = player.level().getBlockEntity(pkt.blockEntityPos);
+            if (!(be instanceof ComputerEntity entity)) return;
 
-                int key = (int) pkt.getKey();
+            Terminal term = entity.terminal;
+            int key = pkt.getKey();
 
-                if (pkt.type == 1) {
-                    term.keyReleased(key, false);
-                } else if (pkt.type == 0) {
-                    term.keyPressed(key, false);
-                } else if (pkt.type == 3) {
-                    term.keyPressed(key, true);
-                }
-
-
-
-                term.syncWatchers(); // now actually syncs the real BE’s terminal
+            switch (pkt.getType()) {
+                case 0 -> term.keyPressed(key, pkt.getModifiers(), false);
+                case 1 -> term.keyReleased(key, pkt.getModifiers());
+                case 2 -> term.keyTyped((char) key, pkt.getModifiers());
             }
+
+            term.controlOwner = player;
+            term.syncWatchers();
         });
         ctx.get().setPacketHandled(true);
     }

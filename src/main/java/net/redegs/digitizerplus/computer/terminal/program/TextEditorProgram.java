@@ -5,20 +5,35 @@ import net.redegs.digitizerplus.computer.terminal.Cell;
 import net.redegs.digitizerplus.computer.terminal.Terminal;
 import org.lwjgl.glfw.GLFW;
 
-import java.awt.*;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.Transferable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public class TextEditorProgram extends TerminalProgram {
+    private static class Edit {
+        final List<String> snapshot;
+        final int cursorX, cursorY;
+        Edit(List<String> snapshot, int x, int y) {
+            this.snapshot = new ArrayList<>(snapshot);
+            this.cursorX = x;
+            this.cursorY = y;
+        }
+    }
+
+    private final Deque<Edit> undoStack = new ArrayDeque<>();
+    private final Deque<Edit> redoStack = new ArrayDeque<>();
+    private boolean recordEnabled = true;
+
+    private boolean inTypingGroup = false;
+    private boolean cursorMovedSinceLastEdit = false;
+    private long lastEditTime = 0;
+    private static final long TYPING_GROUP_INTERVAL_MS = 700;
+
+    //--------------------------------
+
     private List<String> lines = new ArrayList<>();
     private int editorCursorX = 0;
     private int editorCursorY = 0;
@@ -34,6 +49,7 @@ public class TextEditorProgram extends TerminalProgram {
     private String statusText = null;
     private final int textColor = 0xFFFFFF;
     private final int statusColor = 0x00FF00;
+    public CompletableFuture<String> clipboardFuture = new CompletableFuture<>();
 
     // === Python Syntax Colors ===
     private static final int COLOR_KEYWORD = 0xFFAA00;
@@ -104,7 +120,7 @@ public class TextEditorProgram extends TerminalProgram {
         String status;
         if (inMenu) {
             if (menuSelector == 0)
-                status = " [Save File] |  Run  |  Exit  ";
+                status = " [SaveSave File] |  Run  |  Exit  ";
             else if (menuSelector == 1)
                 status = "  Save File  | [Run] |  Exit  ";
             else
@@ -181,23 +197,14 @@ public class TextEditorProgram extends TerminalProgram {
 
 
     public void onPaste() {
+        endTypingGroup();
+        saveSnapshot(true);
         // Get Clipbaord text
-        String cbText = new String();
-        try {
-            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-            Transferable contents = clipboard.getContents(null);
-            if (contents != null && contents.isDataFlavorSupported(DataFlavor.stringFlavor)) {
-                cbText = (String) contents.getTransferData(DataFlavor.stringFlavor);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        if (cbText.isEmpty()) return;
+        terminal.requestClipboard(terminal.controlOwner);
+        String cbtext = terminal.getClipboard();
 
-
-
-        // Split pasted content into lines
-        String[] pasteLines = cbText.split("\n", -1);
+                // Split pasted content into lines
+        String[] pasteLines = cbtext.split("\n", -1);
 
         String currentLine = lines.get(editorCursorY);
         String before = currentLine.substring(0, editorCursorX);
@@ -229,36 +236,45 @@ public class TextEditorProgram extends TerminalProgram {
 
     @Override
     public void onKeyDown(int key) {
+        boolean ctrl = terminal.keysDown.contains(GLFW.GLFW_KEY_LEFT_CONTROL) ||
+                terminal.keysDown.contains(GLFW.GLFW_KEY_RIGHT_CONTROL);
+
+        if (ctrl) {
+            switch (key) {
+                case GLFW.GLFW_KEY_LEFT -> moveWordLeft();
+                case GLFW.GLFW_KEY_RIGHT -> moveWordRight();
+                case GLFW.GLFW_KEY_UP -> moveParagraphUp();
+                case GLFW.GLFW_KEY_DOWN -> moveParagraphDown();
+                case GLFW.GLFW_KEY_Z -> undo();
+                case GLFW.GLFW_KEY_Y -> redo();
+                default -> {}
+            }
+            return;
+        }
+
         if (terminal.keysDown.contains(GLFW.GLFW_KEY_LEFT_ALT)) {
             openMenu();
         }
-
-        if (terminal.keysDown.contains(GLFW.GLFW_KEY_LEFT_CONTROL)) {
-//            if (key == GLFW.GLFW_KEY_V) {
-            DigitizerPlus.LOGGER.info("pRESSED PASTE");
-            onPaste();
-//            }
-
-        }
     }
 
-    @Override
-    public void onKeyUp(int key) {
-
-    }
 
     @Override
     public void onKey(char c) {
+        saveSnapshot(false); // coalesces within typing group
+
         String line = lines.get(editorCursorY);
         StringBuilder sb = new StringBuilder(line);
         sb.insert(editorCursorX, c);
         lines.set(editorCursorY, sb.toString());
         editorCursorX++;
+
         render();
     }
 
     @Override
     public void onBackspace() {
+        endTypingGroup();
+        saveSnapshot(true);
         if (editorCursorX > 0) {
             String line = lines.get(editorCursorY);
             StringBuilder sb = new StringBuilder(line);
@@ -277,6 +293,9 @@ public class TextEditorProgram extends TerminalProgram {
 
     @Override
     public void onNewline(String ignored) {
+        endTypingGroup();
+        saveSnapshot(true);
+
         if (inMenu) {
             if (menuSelector == 0) {
                 save();
@@ -314,6 +333,8 @@ public class TextEditorProgram extends TerminalProgram {
         }
         lines.set(editorCursorY, sb.toString());
         render();
+        cursorMovedSinceLastEdit = true;
+        endTypingGroup();
     }
 
 
@@ -332,6 +353,9 @@ public class TextEditorProgram extends TerminalProgram {
                 scrollOffset--;
             }
         }
+
+        cursorMovedSinceLastEdit = true;
+        endTypingGroup();
         render();
     }
 
@@ -351,6 +375,10 @@ public class TextEditorProgram extends TerminalProgram {
                 scrollOffset++;
             }
         }
+
+
+        cursorMovedSinceLastEdit = true;
+        endTypingGroup();
         render();
     }
 
@@ -369,6 +397,9 @@ public class TextEditorProgram extends TerminalProgram {
             editorCursorY--;
             editorCursorX = lines.get(editorCursorY).length();
         }
+
+        cursorMovedSinceLastEdit = true;
+        endTypingGroup();
         render();
     }
 
@@ -387,6 +418,72 @@ public class TextEditorProgram extends TerminalProgram {
             editorCursorY++;
             editorCursorX = 0;
         }
+
+        cursorMovedSinceLastEdit = true;
+        endTypingGroup();
+        render();
+    }
+
+
+    public void moveWordLeft() {
+        if (editorCursorX == 0 && editorCursorY > 0) {
+            editorCursorY--;
+            editorCursorX = lines.get(editorCursorY).length();
+            render();
+            return;
+        }
+
+        String line = lines.get(editorCursorY);
+        if (editorCursorX == 0) return;
+
+        int i = editorCursorX - 1;
+        // skip any spaces before word
+        while (i > 0 && Character.isWhitespace(line.charAt(i))) i--;
+        // skip the word itself
+        while (i > 0 && !Character.isWhitespace(line.charAt(i - 1))) i--;
+
+        editorCursorX = i;
+        render();
+    }
+
+    public void moveWordRight() {
+        String line = lines.get(editorCursorY);
+        int len = line.length();
+
+        if (editorCursorX >= len && editorCursorY < lines.size() - 1) {
+            editorCursorY++;
+            editorCursorX = 0;
+            render();
+            return;
+        }
+
+        int i = editorCursorX;
+        // skip current word chars
+        while (i < len && !Character.isWhitespace(line.charAt(i))) i++;
+        // skip following spaces
+        while (i < len && Character.isWhitespace(line.charAt(i))) i++;
+
+        editorCursorX = Math.min(i, len);
+        render();
+    }
+
+    public void moveParagraphUp() {
+        if (editorCursorY == 0) return;
+
+        int y = editorCursorY - 1;
+        while (y > 0 && !lines.get(y).isBlank()) y--;
+        editorCursorY = y;
+        editorCursorX = Math.min(editorCursorX, lines.get(editorCursorY).length());
+        render();
+    }
+
+    public void moveParagraphDown() {
+        if (editorCursorY >= lines.size() - 1) return;
+
+        int y = editorCursorY + 1;
+        while (y < lines.size() - 1 && !lines.get(y).isBlank()) y++;
+        editorCursorY = y;
+        editorCursorX = Math.min(editorCursorX, lines.get(editorCursorY).length());
         render();
     }
 
@@ -421,6 +518,11 @@ public class TextEditorProgram extends TerminalProgram {
     }
 
 
+    @Override
+    public void controlV() {
+        onPaste();
+    }
+
     public void save() {
         try {
             Files.write(filePath, lines);
@@ -436,8 +538,75 @@ public class TextEditorProgram extends TerminalProgram {
         }
     }
 
+    private void saveSnapshot(boolean forceNewGroup) {
+        if (!recordEnabled) return;
+
+        long now = System.currentTimeMillis();
+        boolean sameGroup = !forceNewGroup
+                && inTypingGroup
+                && !cursorMovedSinceLastEdit
+                && (now - lastEditTime) < TYPING_GROUP_INTERVAL_MS;
+
+        if (!sameGroup) {
+            undoStack.push(new Edit(lines, editorCursorX, editorCursorY));
+            redoStack.clear();
+            inTypingGroup = true;
+            cursorMovedSinceLastEdit = false;
+        }
+
+        lastEditTime = now;
+    }
+    private void endTypingGroup() {
+        inTypingGroup = false;
+    }
+
+    public void undo() {
+        endTypingGroup();
+        if (undoStack.isEmpty()) return;
+        recordEnabled = false;
+
+        Edit last = undoStack.pop();
+        redoStack.push(new Edit(lines, editorCursorX, editorCursorY));
+
+        lines = new ArrayList<>(last.snapshot);
+        editorCursorX = last.cursorX;
+        editorCursorY = last.cursorY;
+
+        recordEnabled = true;
+        render();
+    }
+
+    public void redo() {
+        endTypingGroup();
+        if (redoStack.isEmpty()) return;
+        recordEnabled = false;
+
+        Edit next = redoStack.pop();
+        undoStack.push(new Edit(lines, editorCursorX, editorCursorY));
+
+        lines = new ArrayList<>(next.snapshot);
+        editorCursorX = next.cursorX;
+        editorCursorY = next.cursorY;
+
+        recordEnabled = true;
+        render();
+    }
+
+
+
+
+
+
+
+
+
+
+
+
     @Override
     public void stop() {
         this.terminal.startProgram(previousProgram);
     }
+
+
 }
