@@ -120,7 +120,7 @@ public class TextEditorProgram extends TerminalProgram {
         String status;
         if (inMenu) {
             if (menuSelector == 0)
-                status = " [SaveSave File] |  Run  |  Exit  ";
+                status = " [Save File] |  Run  |  Exit  ";
             else if (menuSelector == 1)
                 status = "  Save File  | [Run] |  Exit  ";
             else

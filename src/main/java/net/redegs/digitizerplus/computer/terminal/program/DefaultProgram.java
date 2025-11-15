@@ -134,7 +134,11 @@ public class DefaultProgram extends TerminalProgram {
 
         if (files.length > 0) {
             for (File file: files) {
-                print(file.getName().toString(), 0x00ffff);
+                if (Files.isDirectory(file.toPath())) {
+                    print(file.getName().toString(), 0xffff00);
+                } else if (Files.isRegularFile(file.toPath())) {
+                    print(file.getName().toString(), 0x00ffff);
+                }
             }
         } else {
             print("No files exist yet.", 0x00ffff);
@@ -238,7 +242,11 @@ public class DefaultProgram extends TerminalProgram {
 
         } else {
             if (Files.exists(currentDirectory.resolve(dirName))) {
-                currentDirectory = currentDirectory.resolve(dirName);
+                if (Files.isDirectory(currentDirectory.resolve(dirName))) {
+                    currentDirectory = currentDirectory.resolve(dirName);
+                } else {
+                    print("Path '".concat(dirName).concat("' is a file"), 0xFF0000);
+                }
 
             } else {
                 print("Folder '".concat(dirName).concat("' does not exist."), 0xFF0000);
