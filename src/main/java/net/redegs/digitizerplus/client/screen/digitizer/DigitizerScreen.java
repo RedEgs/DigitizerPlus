@@ -1,21 +1,21 @@
-package net.redegs.digitizerplus.screen.storageblock;
+package net.redegs.digitizerplus.client.screen.digitizer;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.client.renderer.GameRenderer;
 import net.redegs.digitizerplus.DigitizerPlus;
 
-public class StorageBlockScreen extends AbstractContainerScreen<StorageBlockMenu> {
+public class DigitizerScreen extends AbstractContainerScreen<DigitizerMenu> {
     private static final ResourceLocation TEXTURE =
-            new ResourceLocation(DigitizerPlus.MOD_ID, "textures/gui/storage_gui.png");
+            new ResourceLocation(DigitizerPlus.MOD_ID, "textures/gui/digitizer_gui.png");
 
-    public StorageBlockScreen(AbstractContainerMenu pMenu, Inventory pPlayerInventory, Component pTitle) {
-        super((StorageBlockMenu) pMenu, pPlayerInventory, pTitle);
+    public DigitizerScreen(AbstractContainerMenu pMenu, Inventory pPlayerInventory, Component pTitle) {
+        super((DigitizerMenu) pMenu, pPlayerInventory, pTitle);
     }
 
     @Override
@@ -41,8 +41,5 @@ public class StorageBlockScreen extends AbstractContainerScreen<StorageBlockMenu
         super.render(guiGraphics, mouseX, mouseY, delta);
         renderTooltip(guiGraphics, mouseX, mouseY);
     }
-
-
-
-
 }
+

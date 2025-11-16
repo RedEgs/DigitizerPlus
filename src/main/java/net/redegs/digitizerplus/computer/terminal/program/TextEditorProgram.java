@@ -48,7 +48,10 @@ public class TextEditorProgram extends TerminalProgram {
 
     private String statusText = null;
     private final int textColor = 0xFFFFFF;
-    private final int statusColor = 0x00FF00;
+
+    private final int statusColor = 0xFFFFFF;
+    private final int statusBackground = 0xFF418fd9;
+
     public CompletableFuture<String> clipboardFuture = new CompletableFuture<>();
 
     // === Python Syntax Colors ===
@@ -95,7 +98,7 @@ public class TextEditorProgram extends TerminalProgram {
 
         for (int y = 0; y < rows; y++)
             for (int x = 0; x < cols; x++)
-                buf[y][x] = new Cell(' ', textColor);
+                buf[y][x] = new Cell(' ', textColor, 0x000000);
 
         int contentRows = rows - 1;
         for (int i = 0; i < contentRows; i++) {
@@ -106,7 +109,7 @@ public class TextEditorProgram extends TerminalProgram {
             Cell[] cellRow = new Cell[cols];
             for (int x = 0; x < cols; x++) {
                 char c = (x < line.length()) ? line.charAt(x) : ' ';
-                cellRow[x] = new Cell(c, textColor);
+                cellRow[x] = new Cell(c, textColor, 0x000000);
             }
 
             // Apply Python syntax highlighting
@@ -132,7 +135,7 @@ public class TextEditorProgram extends TerminalProgram {
         }
 
         for (int x = 0; x < Math.min(status.length(), cols); x++)
-            buf[rows - 1][x] = new Cell(status.charAt(x), statusColor);
+            buf[rows - 1][x] = new Cell(status.charAt(x), statusColor, statusBackground);
 
         int screenY = editorCursorY - scrollOffset;
         if (screenY >= 0 && screenY < contentRows)
@@ -192,7 +195,15 @@ public class TextEditorProgram extends TerminalProgram {
 
     private void setColor(Cell[] line, int start, int end, int color) {
         for (int i = start; i < end && i < line.length; i++)
-            line[i].color = color;
+            line[i].fgColor = color;
+        // Optionally: line[i].backgroundColor = someValue;
+    }
+
+    private void setColor(Cell[] line, int start, int end, int color, int backgroundColor) {
+        for (int i = start; i < end && i < line.length; i++) {
+            line[i].fgColor = color;
+            line[i].bgColor = backgroundColor;
+        }
     }
 
 

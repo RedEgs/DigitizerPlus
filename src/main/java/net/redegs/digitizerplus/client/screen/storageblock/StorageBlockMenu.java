@@ -1,4 +1,4 @@
-package net.redegs.digitizerplus.screen.storageblock;
+package net.redegs.digitizerplus.client.screen.storageblock;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
@@ -13,7 +13,7 @@ import net.redegs.digitizerplus.block.ModBlocks;
 import net.minecraftforge.items.IItemHandler;
 import net.redegs.digitizerplus.block.entity.StorageBlockEntity;
 import net.redegs.digitizerplus.item.ModItems;
-import net.redegs.digitizerplus.screen.ModMenuTypes;
+import net.redegs.digitizerplus.client.screen.ModMenuTypes;
 
 
 class StorageCardRestrictedSlot extends SlotItemHandler {

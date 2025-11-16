@@ -26,7 +26,7 @@ import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 import net.redegs.digitizerplus.block.DigitizerBlock;
 import net.redegs.digitizerplus.item.custom.LinkerItem;
-import net.redegs.digitizerplus.screen.digitizer.DigitizerMenu;
+import net.redegs.digitizerplus.client.screen.digitizer.DigitizerMenu;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

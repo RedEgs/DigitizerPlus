@@ -11,7 +11,7 @@ import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.redegs.digitizerplus.DigitizerPlus;
-import net.redegs.digitizerplus.screen.imgui.ImGuiScreen;
+import net.redegs.digitizerplus.client.screen.imgui.ImGuiScreen;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.glfw.GLFW;
 

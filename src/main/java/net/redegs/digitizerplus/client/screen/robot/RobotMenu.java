@@ -1,4 +1,4 @@
-package net.redegs.digitizerplus.screen.robot;
+package net.redegs.digitizerplus.client.screen.robot;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -11,8 +11,8 @@ import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
+import net.redegs.digitizerplus.client.screen.ModMenuTypes;
 import net.redegs.digitizerplus.entity.HumanoidRobot;
-import net.redegs.digitizerplus.screen.ModMenuTypes;
 
 public class RobotMenu extends AbstractContainerMenu {
 

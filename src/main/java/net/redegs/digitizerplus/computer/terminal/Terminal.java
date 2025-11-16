@@ -41,6 +41,9 @@ public class Terminal {
     private int currentColor = 0xFFFFFF;
     private int defaultColor = 0xFFFFFF;
 
+    private int currentBgColor = 0x00000000; // Default transparent
+    private int defaultBgColor = 0x00000000;
+
     public Terminal(int rows, int cols) {
         this.buffer = new Cell[rows][cols];
         this.watchers = new ArrayList<>();
@@ -73,13 +76,13 @@ public class Terminal {
 
         // place char with currentColor
         if (cursorX < buffer[cursorY].length) {
-            buffer[cursorY][cursorX] = new Cell(c, currentColor);
+            buffer[cursorY][cursorX] = new Cell(c, currentColor, currentBgColor);
             cursorX++;
         } else if (cursorY < buffer.length - 1) {
             // wrap to next line
             cursorY++;
             cursorX = PROMPT_LENGTH;
-            buffer[cursorY][cursorX] = new Cell(c, currentColor);
+            buffer[cursorY][cursorX] = new Cell(c, currentColor, currentBgColor);
             cursorX++;
 
             if (!override) {
@@ -172,7 +175,7 @@ public class Terminal {
 
         if (cursorX > PROMPT_LENGTH) {
             cursorX--;
-            buffer[cursorY][cursorX] = new Cell(' ', currentColor);
+            buffer[cursorY][cursorX] = new Cell(' ', currentColor, currentBgColor);
         } else if (cursorY > 0) {
             if (cursorY - 1 == inputLine - 1) return;
             cursorY--;
@@ -354,7 +357,7 @@ public class Terminal {
             buffer[y - 1] = Arrays.copyOf(buffer[y], buffer[y].length);
         }
         for (int x = 0; x < buffer[buffer.length - 1].length; x++) {
-            buffer[buffer.length - 1][x] = new Cell(' ', currentColor);
+            buffer[buffer.length - 1][x] = new Cell(' ', currentColor, currentBgColor);
         }
 
         // 🔑 Adjust cursor and input line after scroll
@@ -405,7 +408,7 @@ public class Terminal {
     public void clearBuffer() {
         for (int y = 0; y < buffer.length; y++) {
             for (int x = 0; x < buffer[y].length; x++) {
-                buffer[y][x] = new Cell(' ', currentColor);
+                buffer[y][x] = new Cell(' ', currentColor, currentBgColor);
             }
         }
 
@@ -562,6 +565,14 @@ public class Terminal {
 
     public void setCurrentColor(int color) {
         this.currentColor = color;
+    }
+
+    public void setCurrentBackground(int color) {
+        this.currentBgColor = color;
+    }
+
+    public void resetCurrentBackground() {
+        this.currentBgColor = defaultBgColor;
     }
 
     public UUID getComputerID() {

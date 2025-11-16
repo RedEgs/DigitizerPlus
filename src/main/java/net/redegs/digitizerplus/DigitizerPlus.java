@@ -29,22 +29,24 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.redegs.digitizerplus.block.ModBlocks;
 import net.redegs.digitizerplus.block.entity.DigitizerEntity;
 import net.redegs.digitizerplus.block.entity.ModBlockEntities;
+import net.redegs.digitizerplus.block.entity.renderer.ComputerEntityRenderer;
 import net.redegs.digitizerplus.client.Keybindings;
-import net.redegs.digitizerplus.client.RobotDebugRenderer;
+import net.redegs.digitizerplus.client.renderer.RobotDebugRenderer;
+import net.redegs.digitizerplus.client.screen.ModMenuTypes;
 import net.redegs.digitizerplus.computer.ComputerManager;
 import net.redegs.digitizerplus.entity.HumanoidRobot;
 import net.redegs.digitizerplus.entity.ModEntities;
-import net.redegs.digitizerplus.entity.client.HumanoidRobotRenderer;
+import net.redegs.digitizerplus.entity.renderer.HumanoidRobotRenderer;
 import net.redegs.digitizerplus.imgui.Imgui;
 import net.redegs.digitizerplus.item.ModCreativeModTabs;
 import net.redegs.digitizerplus.item.ModItems;
 import net.redegs.digitizerplus.misc.commands.Python;
 import net.redegs.digitizerplus.network.ModNetwork;
 import net.redegs.digitizerplus.compat.cctweaked.peripheral.DigitizerPeripheral;
-import net.redegs.digitizerplus.screen.*;
-import net.redegs.digitizerplus.screen.digitizer.DigitizerScreen;
-import net.redegs.digitizerplus.screen.robot.RobotScreen;
-import net.redegs.digitizerplus.screen.storageblock.StorageBlockScreen;
+import net.redegs.digitizerplus.client.screen.*;
+import net.redegs.digitizerplus.client.screen.digitizer.DigitizerScreen;
+import net.redegs.digitizerplus.client.screen.robot.RobotScreen;
+import net.redegs.digitizerplus.client.screen.storageblock.StorageBlockScreen;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -53,8 +55,6 @@ import java.util.function.Function;
 
 // TODO -------
 
-// INGAME CODE EDITOR
-    // LINTING
 // MAKE THE WRAPPERS USEFULL
 // MAKE THE DEFAULT COMPUTERS RESUME SCRIPT WHEN LOADING WORLD
 // MAKE COMPUTERS DROP THEMSELVES WITH THEIR UUID.
@@ -168,6 +168,7 @@ public class DigitizerPlus {
         @SubscribeEvent
         public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
             event.registerEntityRenderer(ModEntities.HUMANOID_ROBOT.get(), HumanoidRobotRenderer::new);
+            event.registerBlockEntityRenderer(ModBlockEntities.COMPUTER_BE.get(), ComputerEntityRenderer::new);
         }
 
         @SubscribeEvent

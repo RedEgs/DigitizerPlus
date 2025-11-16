@@ -1,4 +1,4 @@
-package net.redegs.digitizerplus.screen.imgui;
+package net.redegs.digitizerplus.client.screen.imgui;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;

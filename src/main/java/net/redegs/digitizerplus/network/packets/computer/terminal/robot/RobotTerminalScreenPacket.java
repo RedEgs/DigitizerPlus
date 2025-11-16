@@ -4,7 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 import net.redegs.digitizerplus.entity.HumanoidRobot;
-import net.redegs.digitizerplus.screen.computer.TerminalScreen;
+import net.redegs.digitizerplus.client.screen.computer.TerminalScreen;
 
 import java.util.function.Supplier;
 

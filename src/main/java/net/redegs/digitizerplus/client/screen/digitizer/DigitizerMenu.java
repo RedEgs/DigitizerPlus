@@ -1,4 +1,4 @@
-package net.redegs.digitizerplus.screen.digitizer;
+package net.redegs.digitizerplus.client.screen.digitizer;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
@@ -13,7 +13,7 @@ import net.minecraftforge.items.SlotItemHandler;
 import net.redegs.digitizerplus.block.ModBlocks;
 import net.redegs.digitizerplus.block.entity.DigitizerEntity;
 import net.redegs.digitizerplus.item.ModItems;
-import net.redegs.digitizerplus.screen.ModMenuTypes;
+import net.redegs.digitizerplus.client.screen.ModMenuTypes;
 
 
 class LinkerRestrictedSlot extends SlotItemHandler {

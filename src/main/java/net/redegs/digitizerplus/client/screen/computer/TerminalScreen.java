@@ -1,4 +1,4 @@
-package net.redegs.digitizerplus.screen.computer;
+package net.redegs.digitizerplus.client.screen.computer;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -19,21 +19,14 @@ import net.redegs.digitizerplus.util.KeyUtils;
 import org.lwjgl.glfw.GLFW;
 
 public class TerminalScreen extends Screen {
-    private final Terminal terminal; // comes from robot sync
-    private final Font FONT = Minecraft.getInstance().font;
+    private final Terminal terminal;
+    private final Font font = Minecraft.getInstance().font;
 
-    private boolean ctrlHeld = false;
-    private boolean shiftHeld = false;
+    private static final long CURSOR_BLINK_INTERVAL = 500; // milliseconds
 
     public TerminalScreen(Terminal terminal) {
         super(Component.literal("Terminal"));
         this.terminal = terminal;
-
-
-
-        // GET ROBOT REFERENCE FROM PACKET
-        // FIGURE OUT HOW TO LINK ROBOT AND TERMINAL 
-
     }
 
     @Override
@@ -48,15 +41,23 @@ public class TerminalScreen extends Screen {
 
         Cell[][] buffer = terminal.getBuffer();
 
-        // Draw each character with its own color
+        // Render text buffer (monospace grid approach)
         for (int y = 0; y < buffer.length; y++) {
+
             int drawX = frameX + 8;
             int drawY = frameY + 8 + y * 10;
 
             for (int x = 0; x < buffer[y].length; x++) {
                 Cell cell = buffer[y][x];
-                if (cell != null && cell.ch!= '\0') {
-                    gfx.drawString(font, Character.toString(cell.ch), drawX, drawY, cell.color);
+
+                // Draw background color if needed
+                if (cell.bgColor != 0x00000000) { // if the cell bg is not transparent
+                    gfx.fill(drawX, drawY - 1, drawX + font.width(Character.toString(cell.ch)), drawY + 12 - 2, cell.bgColor);
+                }
+
+                // Draw character
+                if (cell.ch != '\0') {
+                    gfx.drawString(font, Character.toString(cell.ch), drawX, drawY, cell.fgColor);
                 }
                 drawX += font.width(Character.toString(cell.ch));
             }
@@ -65,10 +66,9 @@ public class TerminalScreen extends Screen {
         // Draw cursor
         int cursorPx = frameX + 8;
         for (int i = 0; i < terminal.cursorX; i++) {
-            if (i >= 42) continue;
-            cursorPx += font.width(Character.toString(buffer[terminal.cursorY][i].ch));
-        }
-        if (!terminal.isCursorHidden()) {
+            if (i >= 42) continue; cursorPx += font.width(Character.toString(buffer[terminal.cursorY][i].ch));
+
+        } if (!terminal.isCursorHidden()) {
             gfx.drawString(font, "_", cursorPx, frameY + 8 + terminal.cursorY * 10, 0xFFFFFF);
         }
 
@@ -79,38 +79,39 @@ public class TerminalScreen extends Screen {
         super.render(gfx, mouseX, mouseY, delta);
     }
 
+    private boolean isCursorVisible() {
+        long time = System.currentTimeMillis();
+        return (time / CURSOR_BLINK_INTERVAL % 2) == 0;
+    }
+
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // Send key down event
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-            // Close the GUI manually
-            assert this.minecraft != null;
             this.minecraft.setScreen(null);
             return true;
         }
-
-        if (terminal.blockEntityPos != null) {
-            ModNetwork.sendToServer(new TerminalKeypressPacket(keyCode, 0, modifiers, terminal.blockEntityPos));
-        }
+        sendKeyPacket(keyCode, 0, modifiers);
         return true;
     }
 
     @Override
     public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
-        // Send key up event
-        if (terminal.blockEntityPos != null) {
-            ModNetwork.sendToServer(new TerminalKeypressPacket(keyCode, 1, modifiers, terminal.blockEntityPos));
-        }
+        sendKeyPacket(keyCode, 1, modifiers);
         return true;
     }
 
     @Override
     public boolean charTyped(char c, int modifiers) {
-        if (terminal.blockEntityPos != null) {
-            // Send typed (printable) event
-            ModNetwork.sendToServer(new TerminalKeypressPacket(c, 2, modifiers, terminal.blockEntityPos));
+        if (c >= 32 && c <= 126) {
+            sendKeyPacket(c, 2, modifiers);
         }
         return true;
+    }
+
+    private void sendKeyPacket(int keyOrChar, int type, int modifiers) {
+        if (terminal.blockEntityPos != null) {
+            ModNetwork.sendToServer(new TerminalKeypressPacket(keyOrChar, type, modifiers, terminal.blockEntityPos));
+        }
     }
 
     @Override
@@ -119,16 +120,16 @@ public class TerminalScreen extends Screen {
         if (terminal.blockEntityPos == null) {
             ModNetwork.sendToServer(new RobotTerminalScreenPacket(false, ((RobotTerminal) terminal).robot.getId()));
         } else {
-            ModNetwork.sendToServer(new TerminalScreenPacket(false , terminal.blockEntityPos));
+            ModNetwork.sendToServer(new TerminalScreenPacket(false, terminal.blockEntityPos));
         }
-    }
-
-    public Terminal getTerminal() {
-        return this.terminal;
     }
 
     @Override
     public boolean isPauseScreen() {
         return false;
+    }
+
+    public Terminal getTerminal() {
+        return this.terminal;
     }
 }

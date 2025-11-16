@@ -6,7 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 import net.redegs.digitizerplus.block.entity.ComputerEntity;
-import net.redegs.digitizerplus.screen.computer.TerminalScreen;
+import net.redegs.digitizerplus.client.screen.computer.TerminalScreen;
 
 import java.util.function.Supplier;
 
@@ -40,7 +40,9 @@ public class TerminalScreenPacket {
 
             if (context.getDirection().getReceptionSide().isClient()) {
                 if (pkt.OpenScreen) {
-                    mc.setScreen(new TerminalScreen(entity.terminal));
+                    TerminalScreen screen = new TerminalScreen(entity.terminal);
+                    mc.setScreen(screen);
+                    entity.screen = screen;
                 }
             } else if (context.getDirection().getReceptionSide().isServer()) {
                 if (!pkt.OpenScreen) {

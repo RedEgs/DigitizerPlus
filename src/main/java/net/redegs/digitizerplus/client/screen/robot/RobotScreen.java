@@ -1,4 +1,4 @@
-package net.redegs.digitizerplus.screen.robot;
+package net.redegs.digitizerplus.client.screen.robot;
 
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.GuiGraphics;

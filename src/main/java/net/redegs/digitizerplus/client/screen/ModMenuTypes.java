@@ -1,4 +1,4 @@
-package net.redegs.digitizerplus.screen;
+package net.redegs.digitizerplus.client.screen;
 
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
@@ -10,9 +10,9 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import net.redegs.digitizerplus.DigitizerPlus;
 import net.redegs.digitizerplus.api.SimpleMenu;
-import net.redegs.digitizerplus.screen.digitizer.DigitizerMenu;
-import net.redegs.digitizerplus.screen.robot.RobotMenu;
-import net.redegs.digitizerplus.screen.storageblock.StorageBlockMenu;
+import net.redegs.digitizerplus.client.screen.digitizer.DigitizerMenu;
+import net.redegs.digitizerplus.client.screen.storageblock.StorageBlockMenu;
+import net.redegs.digitizerplus.client.screen.robot.RobotMenu;
 
 public class ModMenuTypes {
     public static final DeferredRegister<MenuType<?>> MENUS =

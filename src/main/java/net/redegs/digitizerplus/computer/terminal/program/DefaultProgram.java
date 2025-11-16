@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 
@@ -91,11 +93,18 @@ public class DefaultProgram extends TerminalProgram {
                 } else if (command[0].equals("run") || command[0].equals("exec") || command[0].equals("python") || command[0].equals("py")) {
                     String fileName = command[1];
                     runScript(fileName);
-
-
                 }
 
-
+            } else if (command.length == 3) {
+                if (command[0].equals("rename")) {
+                    String fileName = command[1];
+                    String newFileName = command[2];
+                    rename(fileName, newFileName);
+                } else if (command[0].equals("move") || command[0].equals("mv")) {
+                    String fileName = command[1];
+                    String path = command[2];
+                    move(fileName, path);
+                }
 
             } else {
                 print("Unknown command/program", 0xFF0000);
@@ -254,6 +263,57 @@ public class DefaultProgram extends TerminalProgram {
 
         }
 
+    }
+
+    @DefaultProgramCommand(name = "rename")
+    private void rename(String fileName, String newFileName) {
+        if (Files.exists(currentDirectory.resolve(fileName))) {
+            File renamed = new File(currentDirectory.resolve(newFileName).toString());
+            currentDirectory.resolve(fileName).toFile().renameTo(renamed);
+
+            print("Rename Successful.", 0x00FF1A);
+        }
+
+    }
+
+    @DefaultProgramCommand(name = "move")
+    private void move(String fileName, String path) {
+        // Comeback to this, doesnt really work
+
+        try {
+            // Paths for source and destination
+            Path sourcePath = currentDirectory.resolve(fileName).normalize();
+            Path destinationPath = currentDirectory.resolve(path).normalize();
+
+            // Ensure source exists
+            if (!Files.exists(sourcePath)) {
+                print("Source does not exist.", 0xff0000);
+                return;
+            }
+
+            // Handle "." as current directory
+            if (path.equals(".")) {
+                print("Nothing to do", 0xff0000);
+                return;
+            }
+
+            // If destination is a directory, append source file's name
+            if (Files.exists(destinationPath) && Files.isDirectory(destinationPath)) {
+                destinationPath = destinationPath.resolve(sourcePath.getFileName()).normalize();
+            }
+
+            // Prevent escape outside rootDirectory
+            if (!destinationPath.normalize().startsWith(rootDirectory)) {
+                print("Escape attempt detected. ", 0xff0000);
+                return;
+            }
+
+            // Attempt move
+            Files.move(sourcePath, destinationPath, StandardCopyOption.REPLACE_EXISTING);
+            print("Moved " + fileName + " to " + path, 0x00FF1A);
+        } catch (IOException e) {
+            print("Failed to move file: " + e.getMessage(), 0x00FF1A);
+        }
     }
 
     @DefaultProgramCommand(name = "run")

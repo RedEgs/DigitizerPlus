@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.redegs.digitizerplus.DigitizerPlus;
+import net.redegs.digitizerplus.client.screen.computer.TerminalScreen;
 import net.redegs.digitizerplus.computer.ComputerManager;
 import net.redegs.digitizerplus.computer.terminal.Terminal;
 import net.redegs.digitizerplus.network.ModNetwork;
@@ -29,6 +30,7 @@ import java.util.UUID;
 public class ComputerEntity extends BlockEntity {
     public Terminal terminal;
     private UUID computerID;
+    public TerminalScreen screen;
     private boolean freshlyPlaced = false;
     private boolean computerInitialized = false;
 
