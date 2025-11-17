@@ -49,25 +49,25 @@ public class TerminalKeypressPacket {
     public static void handle(TerminalKeypressPacket pkt, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context context = ctx.get();
         ctx.get().enqueueWork(() -> {
-            if (!context.getDirection().getReceptionSide().isServer()) return;
-
-            ServerPlayer player = context.getSender();
-            if (player == null) return;
-
-            BlockEntity be = player.level().getBlockEntity(pkt.blockEntityPos);
-            if (!(be instanceof ComputerEntity entity)) return;
-
-            Terminal term = entity.terminal;
-            int key = pkt.getKey();
-
-            switch (pkt.getType()) {
-                case 0 -> term.keyPressed(key, pkt.getModifiers(), false);
-                case 1 -> term.keyReleased(key, pkt.getModifiers());
-                case 2 -> term.keyTyped((char) key, pkt.getModifiers());
-            }
-
-            term.controlOwner = player;
-            term.syncWatchers();
+//            if (!context.getDirection().getReceptionSide().isServer()) return;
+//
+//            ServerPlayer player = context.getSender();
+//            if (player == null) return;
+//
+//            BlockEntity be = player.level().getBlockEntity(pkt.blockEntityPos);
+//            if (!(be instanceof ComputerEntity entity)) return;
+//
+//            Terminal term = entity.terminal;
+//            int key = pkt.getKey();
+//
+//            switch (pkt.getType()) {
+//                case 0 -> term.keyPressed(key, pkt.getModifiers(), false);
+//                case 1 -> term.keyReleased(key, pkt.getModifiers());
+//                case 2 -> term.keyTyped((char) key, pkt.getModifiers());
+//            }
+//
+//            term.controlOwner = player;
+//            term.syncWatchers();
         });
         ctx.get().setPacketHandled(true);
     }

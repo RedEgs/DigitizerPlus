@@ -12,8 +12,11 @@ import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.redegs.digitizerplus.DigitizerPlus;
 import net.redegs.digitizerplus.client.screen.computer.TerminalScreen;
 import net.redegs.digitizerplus.computer.ComputerManager;
+import net.redegs.digitizerplus.computer.kernel.KernelEngine;
+import net.redegs.digitizerplus.computer.kernel.device.MonitorDevice;
 import net.redegs.digitizerplus.computer.terminal.Terminal;
 import net.redegs.digitizerplus.network.ModNetwork;
+import net.redegs.digitizerplus.network.packets.computer.kernel.device.DisplayDevicePacket;
 import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalScreenPacket;
 import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalSyncPacket;
 import net.redegs.digitizerplus.python.PythonRunner;
@@ -25,19 +28,25 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.Random;
 import java.util.UUID;
 
 public class ComputerEntity extends BlockEntity {
-    public Terminal terminal;
     private UUID computerID;
-    public TerminalScreen screen;
     private boolean freshlyPlaced = false;
+    public boolean monitorInit = false;
     private boolean computerInitialized = false;
 
     public HashMap<Thread, PythonRunner> pythonThreads;
+    public KernelEngine computerKernel;
+    public final MonitorDevice monitorDevice = new MonitorDevice();
 
     public ComputerEntity(BlockPos pPos, BlockState pBlockState) {
         super(ModBlockEntities.COMPUTER_BE.get(), pPos, pBlockState);
+
+
+        monitorDevice.init(this);
+        this.monitorInit = true;
 
         if (FMLEnvironment.dist == Dist.DEDICATED_SERVER) {
             //pythonWrapper = new PythonTerminalWrapper(this.terminal);
@@ -46,11 +55,11 @@ public class ComputerEntity extends BlockEntity {
 
     }
 
-    public void OpenTerminal(ServerPlayer player) {
-        ModNetwork.sendToPlayer(new TerminalSyncPacket(this.terminal.getBuffer(), this.terminal.cursorX, this.terminal.cursorY), (ServerPlayer) player);
-        ModNetwork.sendToPlayer(new TerminalScreenPacket( true, this.getBlockPos()), (ServerPlayer) player);
-        terminal.addWatcher((ServerPlayer) player);
-    }
+//    public void OpenTerminal(ServerPlayer player) {
+//        ModNetwork.sendToPlayer(new TerminalSyncPacket(this.terminal.getBuffer(), this.terminal.cursorX, this.terminal.cursorY), (ServerPlayer) player);
+//        ModNetwork.sendToPlayer(new TerminalScreenPacket( true, this.getBlockPos()), (ServerPlayer) player);
+//        terminal.addWatcher((ServerPlayer) player);
+//    }
 
 
     public void tick(Level pLevel, BlockPos pPos, BlockState pState) {
@@ -78,7 +87,7 @@ public class ComputerEntity extends BlockEntity {
             DigitizerPlus.LOGGER.info("Computer ID found = {}", computerID);
             computerInitialized = true;
             ComputerManager.putComputerEntity(computerID, this);
-
+            initKernel();
 
         } else {
             DigitizerPlus.LOGGER.warn("NO PREVIOUS UUID HAS BEEN FOUND");
@@ -91,9 +100,9 @@ public class ComputerEntity extends BlockEntity {
     @Override
     public void onLoad() {
         super.onLoad();
-        DigitizerPlus.LOGGER.info("CALLING ON LOAD = {}", computerID);
-        if (!this.freshlyPlaced) terminal = new Terminal(getBlockPos(), computerID, 12, 42);
 
+//        DigitizerPlus.LOGGER.info("CALLING ON LOAD = {}", computerID);
+//        if (!this.freshlyPlaced) terminal = new Terminal(getBlockPos(), computerID, 12, 42);
 
     }
 
@@ -112,6 +121,7 @@ public class ComputerEntity extends BlockEntity {
         if (tag.hasUUID("ComputerID")) {
             computerID = tag.getUUID("ComputerID");
             ComputerManager.putComputerEntity(computerID, this);
+            initKernel();
             computerInitialized = true;
         }
     }
@@ -140,8 +150,9 @@ public class ComputerEntity extends BlockEntity {
             createComputerFileLocation();
             computerInitialized = true;
 
-            terminal = new Terminal(getBlockPos(), computerID, 12, 42);
+            //terminal = new Terminal(getBlockPos(), computerID, 12, 42);
             ComputerManager.putComputerEntity(computerID, this);
+            initKernel();
 
             // mark dirty so it actually saves to NBT
             setChanged();
@@ -155,11 +166,46 @@ public class ComputerEntity extends BlockEntity {
         freshlyPlaced = true; computerInitialized = true;
         computerID = uuid;
         ComputerManager.putComputerEntity(computerID, this);
-        terminal = new Terminal(getBlockPos(), computerID, 12, 42);
+       //terminal = new Terminal(getBlockPos(), computerID, 12, 42);
+        initKernel();
+
         setChanged();
         if (level != null && !level.isClientSide) {
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
         }
     }
 
+    private void initKernel() {
+        if (this.level == null || this.level.isClientSide)
+            return; // Only run on server
+
+        if (computerKernel != null)
+            return; // Prevent duplicate kernel instances
+
+        try {
+            computerKernel = new KernelEngine(new KernelEngine.VirtualFileSystem(ComputerManager.PathFromUUID(computerID)));
+            System.out.println("SPAWNED KERNEL");
+        } catch (IOException e) {
+            System.out.println("KERNEL SPAWN ERRORED");
+            throw new RuntimeException(e);
+        }
+
+        computerKernel.spawn(() -> {
+            System.out.println("SPAWNED NEW PROCESS");
+            Random random = new Random();
+            while (true) {
+                int color = random.nextInt(0xFFFFFF + 1);
+
+//                for (int y = 0; y < 8; y++)
+//                    for (int x = 0; x < 8; x++)
+//                        ModNetwork.sendToAllClients(new DisplayDevicePacket(getBlockPos(), x, y, color));
+                //ModNetwork.sendToAllClients(new DisplayDevicePacket(getBlockPos(), 0, 0, color, true));
+                monitorDevice.clear(color); // <- Server only atm
+                monitorDevice.flush();      // ⚠ Needs client sync via packet
+                System.out.println("NEW COLOUR " + color);
+
+                try { Thread.sleep(2000); } catch (InterruptedException e) { break; }
+            }
+        });
+    }
 }

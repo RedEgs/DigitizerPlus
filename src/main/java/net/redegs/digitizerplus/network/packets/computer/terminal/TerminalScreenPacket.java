@@ -38,17 +38,17 @@ public class TerminalScreenPacket {
             Minecraft mc = Minecraft.getInstance();
             ComputerEntity entity = (ComputerEntity) mc.level.getBlockEntity(pkt.blockEntityPos);
 
-            if (context.getDirection().getReceptionSide().isClient()) {
-                if (pkt.OpenScreen) {
-                    TerminalScreen screen = new TerminalScreen(entity.terminal);
-                    mc.setScreen(screen);
-                    entity.screen = screen;
-                }
-            } else if (context.getDirection().getReceptionSide().isServer()) {
-                if (!pkt.OpenScreen) {
-                    entity.terminal.removeWatcher(context.getSender());
-                }
-            }
+//            if (context.getDirection().getReceptionSide().isClient()) {
+//                if (pkt.OpenScreen) {
+//                    TerminalScreen screen = new TerminalScreen(entity.terminal);
+//                    mc.setScreen(screen);
+//                    entity.screen = screen;
+//                }
+//            } else if (context.getDirection().getReceptionSide().isServer()) {
+//                if (!pkt.OpenScreen) {
+//                    entity.terminal.removeWatcher(context.getSender());
+//                }
+//            }
 
         });
         ctx.get().setPacketHandled(true);

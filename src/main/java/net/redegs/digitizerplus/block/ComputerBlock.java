@@ -108,9 +108,9 @@ public class ComputerBlock extends BaseEntityBlock  {
         BlockEntity entity = pLevel.getBlockEntity(pPos);
         ComputerEntity computer = (ComputerEntity) entity;
 
-        if (!pLevel.isClientSide) {
-            computer.OpenTerminal((ServerPlayer) pPlayer);
-        }
+//        if (!pLevel.isClientSide) {
+//            computer.OpenTerminal((ServerPlayer) pPlayer);
+//        }
 
         return InteractionResult.SUCCESS;
     }

@@ -47,29 +47,29 @@ public class TerminalClipboardPacket {
 
 
 
-            if (context.getDirection().getReceptionSide().isServer()) {
-                ServerPlayer player = context.getSender(); // server-side player
-                if (player == null) return;
-
-                ComputerEntity entity = (ComputerEntity) player.level().getBlockEntity(pkt.blockEntityPos);
-                if (entity == null) return;
-
-                Terminal term = entity.terminal;
-                term.setClipboard(pkt.clipboard);
-                term.clipboardReceived(pkt.clipboard);
-
-            } else if (context.getDirection().getReceptionSide().isClient()) {
-                Minecraft mc = Minecraft.getInstance();
-                String clipboard = "";
-                try {
-                    clipboard = mc.keyboardHandler.getClipboard();
-                } catch (Exception ignored) {
-
-                }
-                // Send clipboard back to server
-                ModNetwork.sendToServer(new TerminalClipboardPacket(pkt.blockEntityPos, false, clipboard));
-
-            }
+//            if (context.getDirection().getReceptionSide().isServer()) {
+//                ServerPlayer player = context.getSender(); // server-side player
+//                if (player == null) return;
+//
+//                ComputerEntity entity = (ComputerEntity) player.level().getBlockEntity(pkt.blockEntityPos);
+//                if (entity == null) return;
+//
+//                Terminal term = entity.terminal;
+//                term.setClipboard(pkt.clipboard);
+//                term.clipboardReceived(pkt.clipboard);
+//
+//            } else if (context.getDirection().getReceptionSide().isClient()) {
+//                Minecraft mc = Minecraft.getInstance();
+//                String clipboard = "";
+//                try {
+//                    clipboard = mc.keyboardHandler.getClipboard();
+//                } catch (Exception ignored) {
+//
+//                }
+//                // Send clipboard back to server
+//                ModNetwork.sendToServer(new TerminalClipboardPacket(pkt.blockEntityPos, false, clipboard));
+//
+//            }
         });
         ctx.get().setPacketHandled(true);
     }
