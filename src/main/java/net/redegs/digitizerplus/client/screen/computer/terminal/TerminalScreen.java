@@ -1,4 +1,4 @@
-package net.redegs.digitizerplus.client.screen.computer;
+package net.redegs.digitizerplus.client.screen.computer.terminal;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -13,9 +13,7 @@ import net.redegs.digitizerplus.computer.terminal.Terminal;
 import net.redegs.digitizerplus.network.ModNetwork;
 import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalKeypressPacket;
 import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalScreenPacket;
-import net.redegs.digitizerplus.network.packets.computer.terminal.robot.RobotTerminalKeypressPacket;
 import net.redegs.digitizerplus.network.packets.computer.terminal.robot.RobotTerminalScreenPacket;
-import net.redegs.digitizerplus.util.KeyUtils;
 import org.lwjgl.glfw.GLFW;
 
 public class TerminalScreen extends Screen {

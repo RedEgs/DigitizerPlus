@@ -6,7 +6,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 import net.redegs.digitizerplus.block.entity.ComputerEntity;
-import net.redegs.digitizerplus.client.screen.computer.TerminalScreen;
 
 import java.util.function.Supplier;
 

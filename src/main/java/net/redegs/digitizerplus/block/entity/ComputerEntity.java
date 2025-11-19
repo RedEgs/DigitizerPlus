@@ -3,54 +3,45 @@ package net.redegs.digitizerplus.block.entity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.redegs.digitizerplus.DigitizerPlus;
-import net.redegs.digitizerplus.client.screen.computer.TerminalScreen;
 import net.redegs.digitizerplus.computer.ComputerManager;
 import net.redegs.digitizerplus.computer.kernel.KernelEngine;
 import net.redegs.digitizerplus.computer.kernel.device.MonitorDevice;
-import net.redegs.digitizerplus.computer.terminal.Terminal;
-import net.redegs.digitizerplus.network.ModNetwork;
-import net.redegs.digitizerplus.network.packets.computer.kernel.device.DisplayDevicePacket;
-import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalScreenPacket;
-import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalSyncPacket;
-import net.redegs.digitizerplus.python.PythonRunner;
-import net.redegs.digitizerplus.python.RobotPythonRunner;
-import net.redegs.digitizerplus.python.wrappers.PythonRobotWrapper;
-import net.redegs.digitizerplus.python.wrappers.PythonTerminalWrapper;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.Random;
 import java.util.UUID;
 
 public class ComputerEntity extends BlockEntity {
-    private UUID computerID;
-    private boolean freshlyPlaced = false;
-    public boolean monitorInit = false;
-    private boolean computerInitialized = false;
+    private UUID computerID; /* The ID given to the computer to identify this particular computer */
 
-    public HashMap<Thread, PythonRunner> pythonThreads;
-    public KernelEngine computerKernel;
-    public final MonitorDevice monitorDevice = new MonitorDevice();
+    private boolean computerInitialized = false; /* Used to tell if the computer has an ID, Kernel etc */
+
+    //public HashMap<Thread, PythonRunner> pythonThreads;
+    public KernelEngine computerKernel; /* The (virtual) brain of the computer, controls processes, connects to devices etc. (ALL purely virtual) */
+    public MonitorDevice monitorDevice; /* The device that interfaces with the quad in the entity renderer */
 
     public ComputerEntity(BlockPos pPos, BlockState pBlockState) {
         super(ModBlockEntities.COMPUTER_BE.get(), pPos, pBlockState);
 
-
-        monitorDevice.init(this);
-        this.monitorInit = true;
+        Minecraft.getInstance().execute(() -> {
+            monitorDevice = new MonitorDevice(this);
+        });
 
         if (FMLEnvironment.dist == Dist.DEDICATED_SERVER) {
             //pythonWrapper = new PythonTerminalWrapper(this.terminal);
-            pythonThreads = new HashMap<>();
+            //pythonThreads = new HashMap<>();
+
+        } else {
+
         }
 
     }
@@ -63,6 +54,9 @@ public class ComputerEntity extends BlockEntity {
 
 
     public void tick(Level pLevel, BlockPos pPos, BlockState pState) {
+
+        /* Sometimes load and unload methods can be unreliable depending on if the chunk has requested the block
+        *  to be loaded so i brute force it here, so as soon as its loaded/can tick it loads the computer ID, Kernel etc */
         if (!computerInitialized && !level.isClientSide) {
             initializeComputer();
         }
@@ -71,43 +65,31 @@ public class ComputerEntity extends BlockEntity {
     @Override
     protected void saveAdditional(CompoundTag tag) {
         super.saveAdditional(tag);
+
+        /* Save the computer ID to the block entity, ABSOLUTELY necessary for it to persist anything */
         if (computerID != null) {
             tag.putUUID("ComputerID", computerID);
         }
+
      }
 
     @Override
     public void load(CompoundTag tag) {
+        /* Load ID from NBT, marking computer as initialised & load the kernel */
         super.load(tag);
-        DigitizerPlus.LOGGER.info("LOAD CALLED");
-
-
         if (tag.hasUUID("ComputerID")) {
             computerID = tag.getUUID("ComputerID");
-            DigitizerPlus.LOGGER.info("Computer ID found = {}", computerID);
-            computerInitialized = true;
             ComputerManager.putComputerEntity(computerID, this);
-            initKernel();
 
-        } else {
-            DigitizerPlus.LOGGER.warn("NO PREVIOUS UUID HAS BEEN FOUND");
+            computerInitialized = true;
+
+
         }
-
-
-
-    }
-
-    @Override
-    public void onLoad() {
-        super.onLoad();
-
-//        DigitizerPlus.LOGGER.info("CALLING ON LOAD = {}", computerID);
-//        if (!this.freshlyPlaced) terminal = new Terminal(getBlockPos(), computerID, 12, 42);
-
     }
 
     @Override
     public CompoundTag getUpdateTag() {
+        /* Saves ID to NBT for chunk loading/unloading, used for client server nbt sync */
         CompoundTag tag = super.getUpdateTag();
         if (computerID != null) {
             tag.putUUID("ComputerID", computerID);
@@ -117,11 +99,13 @@ public class ComputerEntity extends BlockEntity {
 
     @Override
     public void handleUpdateTag(CompoundTag tag) {
+        /* Used when syncing NBT for chunk updates etc */
         super.handleUpdateTag(tag);
         if (tag.hasUUID("ComputerID")) {
             computerID = tag.getUUID("ComputerID");
             ComputerManager.putComputerEntity(computerID, this);
             initKernel();
+
             computerInitialized = true;
         }
     }
@@ -130,9 +114,10 @@ public class ComputerEntity extends BlockEntity {
         return computerID;
     }
 
-
-
     private void createComputerFileLocation() {
+        /* When the computer first gets instanced this method creates the
+        *  directory inside the `DigitizerPlus` folder inside the world save */
+
         try {
             Path mainPath = DigitizerPlus.COMPUTER_MANAGER.getMainPath();
             Files.createDirectory(mainPath.resolve(computerID.toString()));
@@ -144,15 +129,15 @@ public class ComputerEntity extends BlockEntity {
     }
 
     public void initializeComputer() {
-
+        /* Creates the computer ID, file location, kernel and anything else whenever the computer
+        *  is instanced for the first time */
         if (computerID == null) {
             computerID = UUID.randomUUID();
             createComputerFileLocation();
-            computerInitialized = true;
-
-            //terminal = new Terminal(getBlockPos(), computerID, 12, 42);
             ComputerManager.putComputerEntity(computerID, this);
             initKernel();
+
+            computerInitialized = true;
 
             // mark dirty so it actually saves to NBT
             setChanged();
@@ -163,11 +148,12 @@ public class ComputerEntity extends BlockEntity {
     }
 
     public void markAsPlaced(UUID uuid) {
-        freshlyPlaced = true; computerInitialized = true;
+        /* Similar to initialise computer, just loads the computer and its essentials */
         computerID = uuid;
         ComputerManager.putComputerEntity(computerID, this);
-       //terminal = new Terminal(getBlockPos(), computerID, 12, 42);
         initKernel();
+
+        computerInitialized = true;
 
         setChanged();
         if (level != null && !level.isClientSide) {
@@ -176,6 +162,9 @@ public class ComputerEntity extends BlockEntity {
     }
 
     private void initKernel() {
+        /* Creates the kernel which handles all the processes, devices and code that
+        *  gets ran by the user. Essentially the (virtual) brain of the computer. */
+
         if (this.level == null || this.level.isClientSide)
             return; // Only run on server
 
@@ -190,22 +179,28 @@ public class ComputerEntity extends BlockEntity {
             throw new RuntimeException(e);
         }
 
-        computerKernel.spawn(() -> {
-            System.out.println("SPAWNED NEW PROCESS");
-            Random random = new Random();
-            while (true) {
-                int color = random.nextInt(0xFFFFFF + 1);
-
-//                for (int y = 0; y < 8; y++)
-//                    for (int x = 0; x < 8; x++)
-//                        ModNetwork.sendToAllClients(new DisplayDevicePacket(getBlockPos(), x, y, color));
-                //ModNetwork.sendToAllClients(new DisplayDevicePacket(getBlockPos(), 0, 0, color, true));
-                monitorDevice.clear(color); // <- Server only atm
-                monitorDevice.flush();      // ⚠ Needs client sync via packet
-                System.out.println("NEW COLOUR " + color);
-
-                try { Thread.sleep(2000); } catch (InterruptedException e) { break; }
-            }
-        });
+//        computerKernel.spawn(() -> {
+//            System.out.println("SPAWNED NEW PROCESS");
+//            Random random = new Random();
+//            while (true) {
+//
+//                ArrayList<MonitorDevice.DisplayInstruction> ins = new ArrayList<>();
+//
+//                for (int y = 0; y < monitorDevice.height; y++) {
+//                    for (int x = 0; x < monitorDevice.width; x++) {
+//                        int color = random.nextInt(0xFFFFFF + 1);
+//                        ins.add(new MonitorDevice.DisplayInstruction(MonitorDevice.DisplayInstructions.SET_PIXEL, x, y, color));
+//                        //monitorDevice.drawPixel(x, y, color);
+//                    }
+//                }
+//
+//                monitorDevice.batch(false, ins.toArray(new MonitorDevice.DisplayInstruction[0]));
+//                monitorDevice.flush();
+//
+//                System.out.println("Next iteration");
+//
+//                try { Thread.sleep(2000); } catch (InterruptedException e) { break; }
+//            }
+//        });
     }
 }

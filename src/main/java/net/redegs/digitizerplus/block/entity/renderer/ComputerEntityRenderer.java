@@ -16,6 +16,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.client.event.ScreenEvent;
+import net.redegs.digitizerplus.block.ComputerBlock;
 import net.redegs.digitizerplus.block.entity.ComputerEntity;
 import net.redegs.digitizerplus.block.entity.DigitizerEntity;
 import net.redegs.digitizerplus.client.DynamicTextureWrapper;
@@ -25,6 +27,8 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 
 import java.util.Random;
+
+import static net.redegs.digitizerplus.util.RenderUtils.coordsToPixels;
 
 public class ComputerEntityRenderer implements BlockEntityRenderer<ComputerEntity> {
     private final Font font = Minecraft.getInstance().font;
@@ -48,14 +52,20 @@ public class ComputerEntityRenderer implements BlockEntityRenderer<ComputerEntit
             case EAST  -> pPoseStack.mulPose(Axis.YP.rotationDegrees(-90));
         }
         pPoseStack.translate(-0.5, -0.5, -0.5);
+        pPoseStack.translate(0, 0, -0.0001);
 
-        if (pBlockEntity.monitorInit) {
+        if (pBlockEntity.monitorDevice != null) {
+            if (pBlockEntity.monitorDevice.getTexture() != null) {
 
-            // Draw the quad
-            RenderSystem.setShader(GameRenderer::getPositionTexShader);
-            RenderSystem.setShaderTexture(0, pBlockEntity.monitorDevice.getTexture());
-            RenderUtils.TexQuad(pPoseStack, pBuffer, pBlockEntity.monitorDevice.getTexture(),
-                    new Vec3(0.5, 0.5, -0.01), 0.5f);
+                RenderSystem.setShader(GameRenderer::getPositionTexShader);
+                RenderSystem.setShaderTexture(0, pBlockEntity.monitorDevice.getTexture());
+                RenderUtils.TexQuad(pPoseStack, pBuffer, pBlockEntity.monitorDevice.getTexture(),
+                        new Vec3(coordsToPixels(ComputerBlock.SCREEN_X), coordsToPixels(6), 0f),
+                        coordsToPixels(ComputerBlock.SCREEN_W),
+                        coordsToPixels(ComputerBlock.SCREEN_H)
+                );
+
+            }
         }
 
 

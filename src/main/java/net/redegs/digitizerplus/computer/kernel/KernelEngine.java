@@ -126,7 +126,7 @@ public class KernelEngine {
     }
 
     public void shutdown() {
-        // Stops the process program running immediately
+        // Stops the whole process pool killing all running processes.
         exec.shutdownNow();
     }
 

@@ -1,8 +1,10 @@
 package net.redegs.digitizerplus.block;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -26,6 +28,8 @@ import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec2;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.redegs.digitizerplus.DigitizerPlus;
@@ -33,8 +37,10 @@ import net.redegs.digitizerplus.block.entity.ComputerEntity;
 import net.redegs.digitizerplus.block.entity.DigitizerEntity;
 import net.redegs.digitizerplus.block.entity.ModBlockEntities;
 import net.redegs.digitizerplus.block.entity.StorageBlockEntity;
+import net.redegs.digitizerplus.client.screen.computer.kernel.MonitorScreen;
 import net.redegs.digitizerplus.computer.ComputerManager;
 import net.redegs.digitizerplus.python.PythonRunner;
+import net.redegs.digitizerplus.util.PacketUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -45,6 +51,18 @@ public class ComputerBlock extends BaseEntityBlock  {
     public static final VoxelShape SHAPE = Block.box(0, 0, 0, 16, 16, 16);
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING; // For block orientation
     public static final BooleanProperty RGB = BooleanProperty.create("rgb"); // Custom property for linked state
+
+    /* Location of the monitor mapped to the texture of the block
+       Determines where the monitor quad is rendered on the block */
+    public static final int SCREEN_X = 3;
+    public static final int SCREEN_Y = 3;
+    public static final int SCREEN_W = 10;
+    public static final int SCREEN_H = 7;
+
+    public static final int MONITOR_W = 100;
+    public static final int MONITOR_H = 70;
+    public static final int RENDER_SCALE = 3;
+
 
     public ComputerBlock(Properties pProperties) {
         super(pProperties);
@@ -87,7 +105,7 @@ public class ComputerBlock extends BaseEntityBlock  {
     @Nullable
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level pLevel, BlockState pState, BlockEntityType<T> pBlockEntityType) {
-        if(pLevel.isClientSide()) {
+        if (pLevel.isClientSide()) {
             return null;
         }
         // Only create a ticker if it's the correct BlockEntity type
@@ -103,23 +121,85 @@ public class ComputerBlock extends BaseEntityBlock  {
                 });
     }
 
+
     @Override
-    public InteractionResult use(BlockState pState, Level pLevel, BlockPos pPos, Player pPlayer, InteractionHand pHand, BlockHitResult pHit) {
-        BlockEntity entity = pLevel.getBlockEntity(pPos);
-        ComputerEntity computer = (ComputerEntity) entity;
+    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player pPlayer, InteractionHand pHand, BlockHitResult hit) {
+        if (!level.isClientSide && hit.getDirection() == state.getValue(BlockStateProperties.HORIZONTAL_FACING)) {
+            Vec3 localHit = hit.getLocation().subtract(pos.getX(), pos.getY(), pos.getZ());
+            Direction facing = state.getValue(BlockStateProperties.HORIZONTAL_FACING);
+            ComputerEntity entity = (ComputerEntity) level.getBlockEntity(pos);
 
-//        if (!pLevel.isClientSide) {
-//            computer.OpenTerminal((ServerPlayer) pPlayer);
-//        }
+            if (entity.monitorDevice != null) {
+                Vec2 screenPixel = getScreenPixel(facing, localHit, entity.monitorDevice.width, entity.monitorDevice.height);
 
-        return InteractionResult.SUCCESS;
+                if (screenPixel != null) {
+                    System.out.println("Screen clicked at screen-local pixel: " + screenPixel.x + "," + screenPixel.y);
+                    // Map to your monitor device pixel grid here (if needed)
+                    return InteractionResult.SUCCESS;
+                }
+
+                return InteractionResult.SUCCESS;
+            }
+        } else {
+            //ComputerEntity entity = (ComputerEntity) level.getBlockEntity(pos);
+            if (level.isClientSide) {
+                ComputerEntity entity = (ComputerEntity) level.getBlockEntity(pos);
+                if (entity.monitorDevice != null) Minecraft.getInstance().setScreen(new MonitorScreen(entity.monitorDevice));
+            }
+
+        }
+
+
+        return InteractionResult.PASS;
     }
+
+    private Vec2 getScreenPixel(Direction facing, Vec3 localHit, int monitorWidth, int monitorHeight) {
+        // Convert hit to a UV position
+        double u = 0, v = 0;
+        int TEX_SIZE = 16;
+
+        switch (facing) {
+            case NORTH -> { u = localHit.x; v = 1.0 - localHit.y; }
+            case SOUTH -> { u = 1.0 - localHit.x; v = 1.0 - localHit.y; }
+            case WEST  -> { u = localHit.z; v = 1.0 - localHit.y; }
+            case EAST  -> { u = 1.0 - localHit.z; v = 1.0 - localHit.y; }
+        }
+
+        // UV → texture pixel
+        int texturePixelX = (int) (u * TEX_SIZE);
+        int texturePixelY = (int) (v * TEX_SIZE);
+
+        // Bring pixel into screen-local space
+        int screenPixelX = texturePixelX - SCREEN_X;
+        int screenPixelY = texturePixelY - SCREEN_Y;
+
+        // Check if within the 7x10 screen area
+        if (screenPixelX >= 0 && screenPixelX < SCREEN_W &&
+                screenPixelY >= 0 && screenPixelY < SCREEN_H) {
+
+            // Map to virtual monitor resolution
+            int monitorX = screenPixelX * monitorWidth / SCREEN_W;
+            int monitorY = screenPixelY * monitorHeight / SCREEN_H;
+
+            return new Vec2(monitorX, monitorY);
+        }
+
+        return null;
+    }
+
+
+
 
     @Override
     public void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
         ComputerEntity entity = (ComputerEntity) pLevel.getBlockEntity(pPos);
         if (!pLevel.isClientSide) {
             ComputerManager.stopThreads(entity.getComputerID());
+
+            if (entity.computerKernel != null) {
+                entity.computerKernel.shutdown();
+            }
+
         }
 
         ItemStack itemStack = new ItemStack(this.asItem());
@@ -158,7 +238,6 @@ public class ComputerBlock extends BaseEntityBlock  {
 
                 if (tag.contains("ComputerID")) {
                     UUID id = tag.getUUID("ComputerID");
-                    DigitizerPlus.LOGGER.info("MARKING AS PLACED = {}", id);
                     computerBE.markAsPlaced(id);
 
                 }

@@ -5,7 +5,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 import net.redegs.digitizerplus.computer.terminal.Cell;
 import net.redegs.digitizerplus.computer.terminal.Terminal;
-import net.redegs.digitizerplus.client.screen.computer.TerminalScreen;
+import net.redegs.digitizerplus.client.screen.computer.terminal.TerminalScreen;
 
 import java.util.function.Supplier;
 
