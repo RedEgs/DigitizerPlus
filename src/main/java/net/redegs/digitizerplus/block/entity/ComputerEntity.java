@@ -9,11 +9,19 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.redegs.digitizerplus.DigitizerPlus;
+import net.redegs.digitizerplus.block.ComputerBlock;
 import net.redegs.digitizerplus.computer.ComputerManager;
 import net.redegs.digitizerplus.computer.kernel.KernelEngine;
 import net.redegs.digitizerplus.computer.kernel.device.MonitorDevice;
+import org.luaj.vm2.Globals;
+import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.lib.jse.JsePlatform;
 
+
+import javax.annotation.Nullable;
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -58,7 +66,7 @@ public class ComputerEntity extends BlockEntity {
         /* Sometimes load and unload methods can be unreliable depending on if the chunk has requested the block
         *  to be loaded so i brute force it here, so as soon as its loaded/can tick it loads the computer ID, Kernel etc */
         if (!computerInitialized && !level.isClientSide) {
-            initializeComputer();
+            initializeComputer(null);
         }
     }
 
@@ -79,10 +87,7 @@ public class ComputerEntity extends BlockEntity {
         super.load(tag);
         if (tag.hasUUID("ComputerID")) {
             computerID = tag.getUUID("ComputerID");
-            ComputerManager.putComputerEntity(computerID, this);
-
-            computerInitialized = true;
-
+            initializeComputer(computerID);
 
         }
     }
@@ -120,31 +125,45 @@ public class ComputerEntity extends BlockEntity {
 
         try {
             Path mainPath = DigitizerPlus.COMPUTER_MANAGER.getMainPath();
-            Files.createDirectory(mainPath.resolve(computerID.toString()));
+            Path compDir = mainPath.resolve(computerID.toString());
+
+            if (compDir.toFile().exists()) {
+                return;
+            }
+
+            Files.createDirectory(compDir);
+
+
+
 
         } catch (IOException e) {
-            DigitizerPlus.LOGGER.warn("FAILED TO CREATE COMPUTER DIR");
+            DigitizerPlus.LOGGER.warn("Failed to create computer directory.");
             throw new RuntimeException(e);
         }
     }
 
-    public void initializeComputer() {
+    @Nullable
+    public void initializeComputer(UUID uuid) {
         /* Creates the computer ID, file location, kernel and anything else whenever the computer
         *  is instanced for the first time */
-        if (computerID == null) {
+        if (uuid != null) {
+            computerID = uuid;
+        } else {
             computerID = UUID.randomUUID();
-            createComputerFileLocation();
-            ComputerManager.putComputerEntity(computerID, this);
-            initKernel();
-
-            computerInitialized = true;
-
-            // mark dirty so it actually saves to NBT
-            setChanged();
-            if (level != null && !level.isClientSide) {
-                level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
-            }
         }
+
+        createComputerFileLocation();
+        ComputerManager.putComputerEntity(computerID, this);
+        initKernel();
+
+        computerInitialized = true;
+
+        // mark dirty so it actually saves to NBT
+        setChanged();
+        if (level != null && !level.isClientSide) {
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+        }
+
     }
 
     public void markAsPlaced(UUID uuid) {
@@ -168,6 +187,10 @@ public class ComputerEntity extends BlockEntity {
         if (this.level == null || this.level.isClientSide)
             return; // Only run on server
 
+        if (!this.getBlockState().getValue(ComputerBlock.ON)) {
+            return;
+        }
+
         if (computerKernel != null)
             return; // Prevent duplicate kernel instances
 
@@ -178,6 +201,49 @@ public class ComputerEntity extends BlockEntity {
             System.out.println("KERNEL SPAWN ERRORED");
             throw new RuntimeException(e);
         }
+
+
+//
+//        Globals lua = JsePlatform.standardGlobals();
+//
+        String scr = """
+        print("Hello world!!!")
+        """;
+//
+//        LuaValue file = lua.load(scr);
+//        file.call();
+
+
+        computerKernel.spawn(() -> {
+            KernelEngine.Process p = KernelEngine.current();
+            try {
+                while (monitorDevice == null) {
+                    Thread.sleep(10);
+                }
+                System.out.println("SPAWNED NEW PROCESS");
+
+                int i = 0;
+
+                monitorDevice.drawText("START", 0, 0, 0xff0000);
+                Thread.sleep(1000);
+                monitorDevice.clear(0x000000);
+
+                p.onEvent("key", (Object e) -> {
+                    monitorDevice.clear(0x000000);
+                    MonitorDevice.KeyEvent event = (MonitorDevice.KeyEvent) e;
+                    monitorDevice.drawText(String.valueOf(((MonitorDevice.KeyEvent) e).keyCode), 0, 0, 0xff0000);
+                });
+
+                p.onEvent("click", (Object e) -> {
+                    MonitorDevice.Vector2 vector2 = (MonitorDevice.Vector2) e;
+                    monitorDevice.drawPixel(vector2.x, vector2.y, 0xff0000);
+                });
+
+            } catch (Throwable t) {
+                t.printStackTrace(); // <- shows the real problem
+            }
+        });
+
 
 //        computerKernel.spawn(() -> {
 //            System.out.println("SPAWNED NEW PROCESS");
@@ -202,5 +268,25 @@ public class ComputerEntity extends BlockEntity {
 //                try { Thread.sleep(2000); } catch (InterruptedException e) { break; }
 //            }
 //        });
+    }
+
+
+
+    public void onPowerOn() {
+        /* Called when powered on */
+        System.out.println("Powered On");
+        initKernel();
+    }
+
+    public void onPowerOff() {
+        /* Called when powered off */
+        System.out.println("Powered Off");
+        computerKernel.shutdown();
+    }
+
+    public void onPixelClicked(int x, int y) {
+        /* Called when pixel is clicked in world */
+        MonitorDevice.Vector2 clickPos = new MonitorDevice.Vector2(x, y);
+        computerKernel.events.fire("click", clickPos);
     }
 }

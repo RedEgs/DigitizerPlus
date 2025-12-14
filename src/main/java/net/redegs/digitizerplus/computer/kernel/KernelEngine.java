@@ -5,13 +5,41 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 public class KernelEngine {
+    public static class EventBus {
+        private final Map<String, List<Consumer<Object>>> listeners = new ConcurrentHashMap<>();
+
+        public void on(String event, Consumer<Object> callback) {
+            listeners.computeIfAbsent(event, k -> new CopyOnWriteArrayList<>()).add(callback);
+        }
+
+        public void off(String event, Consumer<Object> callback) {
+            List<Consumer<Object>> list = listeners.get(event);
+            if (list != null) list.remove(callback);
+        }
+
+        public void fire(String event, Object data) {
+            List<Consumer<Object>> list = listeners.get(event);
+            if (list != null) {
+                for (Consumer<Object> cb : new ArrayList<>(list)) {
+                    cb.accept(data);
+                }
+            }
+        }
+    }
+
+    public final EventBus events = new EventBus();
+
+
     public static class Process {
-        // Run's user's code and other operating system processes.
+        /* Runs the code placed inside of runnables, an limits access using virtual `sys-calls` */
 
         final int pid; // Process-ID assigned by the kernel's `nextPid` int
         final Runnable entry; // The process/code to run
@@ -37,14 +65,23 @@ public class KernelEngine {
             return null;
         }
 
-        public Device openDevice(String id) { return kernel.getDevice(id); }
+        public void onEvent(String name, Consumer<Object> callback) {
+            /* Fires the particular event when changes happen on the bus associated to the event name.
+            *  ```
+            *       KernelEngine.Process p = KernelEngine.current();
+            *
+            *       p.onEvent("Example", (Object e) -> {
+            *          // Do Something
+            *       });
+            *  ```
+            * */
+            kernel.events.on(name, callback);
+        }
     }
     static class Yield extends RuntimeException {
         final long delayMs;
         Yield(long delay) { this.delayMs = delay; }
     }
-
-
     public interface VirtualFileSystemInterface {
         void write(String path, byte[] data) throws IOException;
         byte[] read(String path) throws IOException;
@@ -77,13 +114,11 @@ public class KernelEngine {
     }
 
 
-    public interface Device {
-        Object call(String method, Object... args);
-    }
+    public interface Device { }
     public void registerDevice(String id, Device device) { devices.put(id, device); }
     public Device getDevice(String id) { return devices.get(id); }
 
-
+    private final Map<String, Device> devices = new ConcurrentHashMap<>();
 
     private final ExecutorService exec = Executors.newCachedThreadPool(); // Scheduler which executes the processes programs
     private final Map<Integer, Process> processes = new ConcurrentHashMap<>(); // Process map containing the process and their id
@@ -92,7 +127,6 @@ public class KernelEngine {
 
     private final VirtualFileSystemInterface vfs; // Virtual File System
 
-    private final Map<String, Device> devices = new ConcurrentHashMap<>();
 
 
     public KernelEngine(VirtualFileSystemInterface vfs) {
@@ -118,7 +152,6 @@ public class KernelEngine {
         return pid;
     }
 
-
     public void kill(int pid) {
         // Stops a process from running and removes it from the process map
         Process p = processes.remove(pid);
@@ -136,12 +169,6 @@ public class KernelEngine {
     }
 
     public static Process current() { return CURRENT.get(); }
-
-
-
-
-
-
 
 
 }

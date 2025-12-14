@@ -39,6 +39,9 @@ public class ComputerEntityRenderer implements BlockEntityRenderer<ComputerEntit
 
     @Override
     public void render(ComputerEntity pBlockEntity, float pPartialTick, PoseStack pPoseStack, MultiBufferSource pBuffer, int pPackedLight, int pPackedOverlay) {
+        if (!pBlockEntity.getBlockState().getValue(ComputerBlock.ON)) return;
+
+
         pPoseStack.pushPose();
 
         Direction facing = pBlockEntity.getBlockState().getValue(BlockStateProperties.HORIZONTAL_FACING);
@@ -65,6 +68,36 @@ public class ComputerEntityRenderer implements BlockEntityRenderer<ComputerEntit
                         coordsToPixels(ComputerBlock.SCREEN_H)
                 );
 
+                //drawText(pBlockEntity.monitorDevice.buffer, 0, 0, pPoseStack, pBuffer);
+
+                float scale = 0.005f; // The size to scale the text matrix down by
+
+                pPoseStack.pushPose();
+                pPoseStack.translate(coordsToPixels(ComputerBlock.SCREEN_W), coordsToPixels(ComputerBlock.SCREEN_H), -0.00001);
+                pPoseStack.scale(-scale / ComputerBlock.SCALE_RATIO_X, -scale / ComputerBlock.SCALE_RATIO_Y, scale);
+
+                var buf = pBlockEntity.monitorDevice.textBuffer;
+                for (int y = 0; y < buf.length; y++) {
+                    for (int x = 0; x < buf[y].length; x++) {
+                        String ch = buf[y][x];
+                        if (ch != null) {
+                            font.drawInBatch(
+                                    ch,
+                                    (x * 6),      // character spacing
+                                    (y * 8),      // line spacing
+                                    0xffffff,
+                                    false,
+                                    pPoseStack.last().pose(),
+                                    pBuffer,
+                                    Font.DisplayMode.NORMAL,
+                                    0,
+                                    0xffffff
+                            );
+                        }
+                    }
+                }
+
+                pPoseStack.popPose();
             }
         }
 
@@ -85,5 +118,12 @@ public class ComputerEntityRenderer implements BlockEntityRenderer<ComputerEntit
     @Override
     public boolean shouldRender(ComputerEntity pBlockEntity, Vec3 pCameraPos) {
         return BlockEntityRenderer.super.shouldRender(pBlockEntity, pCameraPos);
+    }
+
+    private void drawText(String text, int x, int y, PoseStack pPoseStack, MultiBufferSource pBuffer) {
+
+
+        font.drawInBatch(text, 0, 0, 0xffffff, false, pPoseStack.last().pose(), pBuffer, Font.DisplayMode.NORMAL, 0, 0xffffff);
+
     }
 }

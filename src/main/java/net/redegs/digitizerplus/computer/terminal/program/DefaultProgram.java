@@ -4,7 +4,6 @@ import com.sun.jna.platform.FileUtils;
 import net.redegs.digitizerplus.DigitizerPlus;
 import net.redegs.digitizerplus.computer.ComputerManager;
 import net.redegs.digitizerplus.computer.terminal.Terminal;
-import net.redegs.digitizerplus.python.PythonRunner;
 import org.apache.commons.io.IOUtils;
 
 import java.io.File;
@@ -13,7 +12,6 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 
@@ -332,20 +330,7 @@ public class DefaultProgram extends TerminalProgram {
 
             if (!code.isEmpty()) {
 
-                HashMap<Thread, PythonRunner> threadMap = new HashMap<>();
-                PythonRunner runner = new PythonRunner(this.terminal.getComputerID(), this.terminal);
-                runner.setCode(code);
 
-                Thread thread = new Thread(runner);
-                thread.start();
-
-
-                threadMap.put(thread, runner);
-                ComputerManager.stopThreads(this.terminal.getComputerID());
-                ComputerManager.putThread(this.terminal.getComputerID(), threadMap);
-
-                runningScript = true;
-                terminal.setAcceptingInput(false);
 
 
 

@@ -152,9 +152,9 @@ public class SimpleScreen extends Screen {
 
 //    public void openFromServer(Player player, Map<String, Integer> extraData) {
 //        if (extraData == null) {
-//            ModNetwork.sendToPlayer(new OpenScreenPacket(this, this.extraData), (ServerPlayer) player);
+//            ModNetwork.sendToPlayer(new OpenMonitorScreenPacket(this, this.extraData), (ServerPlayer) player);
 //        } else {
-//            ModNetwork.sendToPlayer(new OpenScreenPacket(this, extraData), (ServerPlayer) player);
+//            ModNetwork.sendToPlayer(new OpenMonitorScreenPacket(this, extraData), (ServerPlayer) player);
 //        }
 //    }
 

@@ -8,7 +8,10 @@ import net.minecraftforge.network.simple.SimpleChannel;
 import net.redegs.digitizerplus.DigitizerPlus;
 import net.redegs.digitizerplus.network.packets.JepEditorPacket;
 import net.redegs.digitizerplus.network.packets.JepServerPacket;
+import net.redegs.digitizerplus.network.packets.computer.kernel.device.MonitorPixelClickedPacket;
+import net.redegs.digitizerplus.network.packets.computer.kernel.device.OpenMonitorScreenPacket;
 import net.redegs.digitizerplus.network.packets.computer.kernel.device.DisplayDevicePacket;
+import net.redegs.digitizerplus.network.packets.computer.kernel.device.MonitorKeypressedPacket;
 import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalClipboardPacket;
 import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalKeypressPacket;
 import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalScreenPacket;
@@ -92,7 +95,24 @@ public class ModNetwork {
                 DisplayDevicePacket::handle
         );
 
+        INSTANCE.registerMessage(packetId++,
+                OpenMonitorScreenPacket.class,
+                OpenMonitorScreenPacket::encode,
+                OpenMonitorScreenPacket::decode,
+                OpenMonitorScreenPacket::handle);
 
+        INSTANCE.registerMessage(packetId++,
+                MonitorKeypressedPacket.class,
+                MonitorKeypressedPacket::encode,
+                MonitorKeypressedPacket::decode,
+                MonitorKeypressedPacket::handle);
+
+        INSTANCE.registerMessage(packetId++,
+                MonitorPixelClickedPacket.class,
+                MonitorPixelClickedPacket::encode,
+                MonitorPixelClickedPacket::decode,
+                MonitorPixelClickedPacket::handle
+        );
         //INSTANCE.registerMessage(packetId)
 
 

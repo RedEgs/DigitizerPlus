@@ -40,7 +40,6 @@ import net.redegs.digitizerplus.entity.renderer.HumanoidRobotRenderer;
 import net.redegs.digitizerplus.imgui.Imgui;
 import net.redegs.digitizerplus.item.ModCreativeModTabs;
 import net.redegs.digitizerplus.item.ModItems;
-import net.redegs.digitizerplus.misc.commands.Python;
 import net.redegs.digitizerplus.network.ModNetwork;
 import net.redegs.digitizerplus.compat.cctweaked.peripheral.DigitizerPeripheral;
 import net.redegs.digitizerplus.client.screen.*;
@@ -158,7 +157,6 @@ public class DigitizerPlus {
             MenuScreens.register(ModMenuTypes.STORAGE_BLOCK_MENU.get(), StorageBlockScreen::new);
             MenuScreens.register(ModMenuTypes.ROBOT_MENU.get(), RobotScreen::new);
 
-            MinecraftForge.EVENT_BUS.register(Python.class);
             MinecraftForge.EVENT_BUS.register(ComputerManager.class);
 
             MinecraftForge.EVENT_BUS.addListener(RobotDebugRenderer::onRenderWorldLast);

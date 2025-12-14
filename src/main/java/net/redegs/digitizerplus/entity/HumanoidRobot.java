@@ -41,8 +41,8 @@ import net.redegs.digitizerplus.network.ModNetwork;
 import net.redegs.digitizerplus.network.packets.JepServerPacket;
 import net.redegs.digitizerplus.network.packets.computer.terminal.robot.RobotTerminalScreenPacket;
 import net.redegs.digitizerplus.network.packets.computer.terminal.TerminalSyncPacket;
-import net.redegs.digitizerplus.python.RobotPythonRunner;
-import net.redegs.digitizerplus.python.wrappers.PythonRobotWrapper;
+
+
 import net.redegs.digitizerplus.computer.terminal.Terminal;
 import org.apache.logging.log4j.core.tools.picocli.CommandLine;
 
@@ -75,8 +75,8 @@ public class HumanoidRobot extends Mob {
 
 
 
-    public PythonRobotWrapper pythonWrapper;
-    public HashMap<Thread, RobotPythonRunner> pythonThreads;
+    //public PythonRobotWrapper pythonWrapper;
+    //public HashMap<Thread, RobotPythonRunner> pythonThreads;
 
     private static final EntityDataAccessor<Boolean> CODE_EXECUTING =
             SynchedEntityData.defineId(HumanoidRobot.class, EntityDataSerializers.BOOLEAN);
@@ -104,8 +104,8 @@ public class HumanoidRobot extends Mob {
             robotUI = new RobotUI(this);
 
         } else {
-            pythonWrapper = new PythonRobotWrapper(this);
-            pythonThreads = new HashMap<>();
+//            pythonWrapper = new PythonRobotWrapper(this);
+//            pythonThreads = new HashMap<>();
 
         }
 
@@ -187,8 +187,8 @@ public class HumanoidRobot extends Mob {
         this.setCanPickUpLoot(false);
         this.canPickupLoot = false;
         if (!level.isClientSide()) {
-            pythonWrapper = null;
-            stopAllPythonThreads();
+//            pythonWrapper = null;
+//            stopAllPythonThreads();
 
         } else {
             robotUI.Destroy();
@@ -381,25 +381,25 @@ public class HumanoidRobot extends Mob {
         }
     }
 
-    // ---------
-    public void stopAllPythonThreads() {
-        if (!level.isClientSide()) {
-            System.out.println("stopping all threads.");
-            for (Map.Entry<Thread, RobotPythonRunner> entry: pythonThreads.entrySet()) {
-                Thread t = entry.getKey();
-                RobotPythonRunner r = entry.getValue();
-                r.stop();
-            }
-        }
-
-    }
-    public RobotPythonRunner getDefaultThread() {
-        if (!level.isClientSide) {
-            RobotPythonRunner runner = pythonThreads.entrySet().stream().toList().get(0).getValue();
-            return runner;
-        }
-        return null;
-    }
+//    // ---------
+//    public void stopAllPythonThreads() {
+//        if (!level.isClientSide()) {
+//            System.out.println("stopping all threads.");
+//            for (Map.Entry<Thread, RobotPythonRunner> entry: pythonThreads.entrySet()) {
+//                Thread t = entry.getKey();
+//                RobotPythonRunner r = entry.getValue();
+//                r.stop();
+//            }
+//        }
+//
+//    }
+//    public RobotPythonRunner getDefaultThread() {
+//        if (!level.isClientSide) {
+//            RobotPythonRunner runner = pythonThreads.entrySet().stream().toList().get(0).getValue();
+//            return runner;
+//        }
+//        return null;
+//    }
 
     /* Required for threaded use */
     @Nullable

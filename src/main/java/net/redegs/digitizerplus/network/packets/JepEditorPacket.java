@@ -8,12 +8,9 @@ import net.minecraftforge.network.NetworkEvent;
 import net.redegs.digitizerplus.entity.HumanoidRobot;
 import net.redegs.digitizerplus.imgui.Imgui;
 import net.redegs.digitizerplus.imgui.guis.RobotUI;
-import net.redegs.digitizerplus.python.PythonErrorResolver;
 
 import java.util.HashMap;
 import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class JepEditorPacket {
     private final String stacktrace;
@@ -52,12 +49,7 @@ public class JepEditorPacket {
 
                 RobotUI guiContext = (RobotUI) Imgui.renderList.get(robot.robotUI.ContextID-1);
 
-                HashMap<Integer, String> errorMarker = PythonErrorResolver.resolveError(packet.stacktrace, packet.errorMsg);
-                guiContext.threadRunning = false;
-                if (errorMarker.size() >= 1) guiContext.showError(errorMarker);
-                if (guiContext.detailedDebug.get()) {
-                    System.out.println(packet.stacktrace);
-                }
+
 
 
 
